@@ -9,6 +9,7 @@
 #include<gsl/gsl_rng.h>
 #include<gsl/gsl_randist.h>
 #include<assert.h>
+#define MAX_KEY 0x7FFFFFFF
 //#define STATS_ON
 
 struct node

@@ -1,4 +1,5 @@
 #include"header.h"
+void help();
 struct node* grandParentHead=NULL;
 struct node* parentHead=NULL;
 unsigned long numOfNodes;
@@ -14,9 +15,14 @@ static inline struct node* newLeafNode(unsigned long key)
 
 void createHeadNodes()
 {
-  grandParentHead = newLeafNode(ULONG_MAX);
-  grandParentHead->lChild = newLeafNode(ULONG_MAX);
+  grandParentHead = newLeafNode(MAX_KEY);
+  grandParentHead->lChild = newLeafNode(MAX_KEY);
   parentHead = grandParentHead->lChild;
+}
+
+static inline unsigned long getKey(unsigned long key)
+{
+	return (key & 0x7FFFFFFFUL);
 }
 
 static inline struct node* getAddress(struct node* p)
@@ -24,70 +30,44 @@ static inline struct node* getAddress(struct node* p)
 	return (struct node*)((uintptr_t) p & ~((uintptr_t) 3));
 }
 
-static inline bool isNull(struct node* p)
+static inline bool getReplaceFlagInKey(unsigned long key)
 {
-	if( getAddress(p) == NULL)
-	{
-		return true;
-	}
+	return ((key & 80000000UL) == 80000000UL);
+}
+
+static inline unsigned long setReplaceFlagInKey(unsigned long key)
+{
+	return (key | 80000000UL);
+}
+
+static inline bool isDeleteFlagSet(struct node* p)
+{
 	return ((uintptr_t) p & 2) != 0;
 }
 
-static inline bool getLockBit(struct node* p)
+static inline bool isPromoteFlagSet(struct node* p)
 {
 	return ((uintptr_t) p & 1) != 0;
 }
 
-static inline struct node* setLockBit(struct node* p)
+static inline bool isNodeMarked(struct node* p)
 {
-	return (struct node*) ((uintptr_t) p | 1);
+	return ((uintptr_t) p & 3) != 0;
 }
 
-static inline struct node* unsetLockBit(struct node* p)
+static inline bool isNull(struct node* p)
 {
-	return (struct node*) ((uintptr_t) p & ~((uintptr_t) 1));
+	return getAddress(p) == NULL;
 }
 
-static inline struct node* setNullBit(struct node* p)
+static inline struct node* setDeleteFlag(struct node* p)
 {
 	return (struct node*) ((uintptr_t) p | 2);
 }
 
-static inline bool lockEdge(struct node* parent, struct node* child, bool isLeftChild)
+static inline struct node* setPromoteFlag(struct node* p)
 {
-  struct node* lockedChild;
-	parent = getAddress(parent);
-
-  if(getLockBit(child))
-  {
-    return false;
-  }
-  lockedChild = setLockBit(child);
-  if(isLeftChild)
-  {
-    if(parent->lChild.compare_and_swap(lockedChild,child) == child)
-    {
-      return true;
-    }
-  }
-  else
-  {
-    if(parent->rChild.compare_and_swap(lockedChild,child) == child)
-    {
-      return true;
-    }
-  }
-  return false;
-}
-
-static inline void unlockLChild(struct node* parent)
-{
-  getAddress(parent)->lChild = unsetLockBit(getAddress(parent)->lChild);
-}
-
-static inline void unlockRChild(struct node* parent)
-{
-  getAddress(parent)->rChild = unsetLockBit(getAddress(parent)->rChild);
+	return (struct node*) ((uintptr_t) p | 1);
 }
 
 unsigned long lookup(struct threadArgs* tData, unsigned long target)
@@ -95,23 +75,28 @@ unsigned long lookup(struct threadArgs* tData, unsigned long target)
   struct node* node;
   unsigned long lastRightKey;
   struct node* lastRightNode;
+	unsigned long nodeKey;
   tData->readCount++;
+	
   while(true)
   {
     node = grandParentHead;
-    lastRightKey = node->key;
-    lastRightNode = node;
+		nodeKey = getKey(node->key);
+		lastRightNode = node;
+    lastRightKey = nodeKey;
+		
     while( !isNull(node) ) //Loop until a child of a leaf node which is null is reached
     {
 			node = getAddress(node);
-      if(target < node->key)
+			nodeKey = getKey(node->key);
+      if(target < nodeKey)
       {
         node = node->lChild;
       }
-      else if (target > node->key)
+      else if (target > nodeKey)
       {
-        lastRightKey = node->key;
-        lastRightNode = node;
+				lastRightNode = node;
+        lastRightKey = nodeKey;
         node = node->rChild;
       }
       else
@@ -120,7 +105,7 @@ unsigned long lookup(struct threadArgs* tData, unsigned long target)
         return(1);
       }
     }
-    if(lastRightNode->key == lastRightKey)
+    if(getKey(lastRightNode->key) == lastRightKey)
     {
       tData->unsuccessfulReads++;
       return(0);
@@ -136,7 +121,9 @@ bool insert(struct threadArgs* tData, unsigned long insertKey)
   struct node* replaceNode;
   unsigned long lastRightKey;
   struct node* lastRightNode;
-  
+	unsigned long nodeKey;
+	struct node* lastUnmarkedPnode;
+	struct node* lastUnmarkedNode;
   tData->insertCount++;
   
   while(true)
@@ -145,22 +132,31 @@ bool insert(struct threadArgs* tData, unsigned long insertKey)
     {
       pnode = grandParentHead;
       node = parentHead;
+			nodeKey = node->key;
       replaceNode = NULL;
-      lastRightKey = node->key;
-      lastRightNode = node;
+			lastRightNode = node;
+      lastRightKey = nodeKey;  
+			lastUnmarkedPnode = pnode;
+			lastUnmarkedNode = node;
 
       while( !isNull(node) ) //Loop until a child of a leaf node which is null is reached
       {
+				if(!isNodeMarked(node))
+				{
+					lastUnmarkedPnode = pnode;
+					lastUnmarkedNode = node;
+				}
 				node = getAddress(node);
-        if(insertKey < node->key)
+				nodeKey = getKey(node->key);
+        if(insertKey < nodeKey)
         {
           pnode = node;
           node = node->lChild;
         }
-        else if (insertKey > node->key)
+        else if (insertKey > nodeKey)
         {
-          lastRightKey = node->key;
-          lastRightNode = node;
+					lastRightNode = node;
+          lastRightKey = nodeKey;
           pnode = node;
           node = node->rChild;
         }
@@ -170,49 +166,56 @@ bool insert(struct threadArgs* tData, unsigned long insertKey)
           return(false);
         }
       }
-      if(lastRightNode->key == lastRightKey)
+      if(getKey(lastRightNode->key) == lastRightKey)
       {
         break;  
       }
     }
 
-    if(!getLockBit(node)) //If locked restart
+    if(!tData->isNewNodeAvailable) //reuse nodes
+    {  
+      tData->newNode = newLeafNode(insertKey);
+      tData->isNewNodeAvailable = true;
+      replaceNode = tData->newNode;
+    }
+    else
     {
-      if(!tData->isNewNodeAvailable) //reuse nodes
-      {  
-        tData->newNode = newLeafNode(insertKey);
-        tData->isNewNodeAvailable = true;
-        replaceNode = tData->newNode;
-      }
-      else
+      replaceNode = tData->newNode;
+      replaceNode->key = insertKey;
+    }
+		node = getAddress(node);
+    if(insertKey < getKey(pnode->key)) //left case
+    {
+      if(pnode->lChild.compare_and_swap(replaceNode,node) == node)
       {
-        replaceNode = tData->newNode;
-        replaceNode->key = insertKey;
-      }
-
-      if(insertKey < pnode->key) //left case
-      {
-        if(pnode->lChild.compare_and_swap(replaceNode,node) == node)
-        {
-          tData->isNewNodeAvailable = false;
-          tData->successfulInserts++;
-          return(true);
-        }
-      }
-      else //right case
-      {
-        if(pnode->rChild.compare_and_swap(replaceNode,node) == node)
-        {
-          tData->isNewNodeAvailable = false;
-          tData->successfulInserts++;
-          return(true);
-        }
+        tData->isNewNodeAvailable = false;
+        tData->successfulInserts++;
+        return(true);
       }
     }
+    else //right case
+    {
+      if(pnode->rChild.compare_and_swap(replaceNode,node) == node)
+      {
+        tData->isNewNodeAvailable = false;
+        tData->successfulInserts++;
+        return(true);
+      }
+    }
+		if(isNodeMarked(node))
+		{
+			help();
+		}
     tData->insertRetries++;
   }
 }
 
+bool remove(struct threadArgs* tData, unsigned long deleteKey)
+{
+	return false;
+}
+
+/*
 bool remove(struct threadArgs* tData, unsigned long deleteKey)
 {
   struct node* pnode;
@@ -687,6 +690,11 @@ bool remove(struct threadArgs* tData, unsigned long deleteKey)
     tData->deleteRetries++;
   } // end of infinite while loop
 }
+*/
+void help()
+{
+	
+}
 
 void nodeCount(struct node* node)
 {
@@ -739,6 +747,6 @@ bool isValidBST(struct node* node, unsigned long min, unsigned long max)
 
 bool isValidTree()
 {
-  return(isValidBST(parentHead->lChild,0,ULONG_MAX));
+  return(isValidBST(parentHead->lChild,0,MAX_KEY));
 }
 
