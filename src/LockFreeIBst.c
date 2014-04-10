@@ -20,9 +20,23 @@ void createHeadNodes()
   parentHead = grandParentHead->lChild;
 }
 
+static inline void btsOnDeleteFlag(struct node** p)
+{
+  void** ptr = (void**) p;
+  __sync_or_and_fetch(ptr,2);
+  return;
+}
+
+static inline void btsOnPromoteFlag(struct node** p)
+{
+	void** ptr = (void**) p;
+	__sync_or_and_fetch(ptr,1);
+	return;
+}
+
 static inline unsigned long getKey(unsigned long key)
 {
-	return (key & 0x7FFFFFFFUL);
+	return (key & 0x7FFFFFFF);
 }
 
 static inline struct node* getAddress(struct node* p)
@@ -30,14 +44,14 @@ static inline struct node* getAddress(struct node* p)
 	return (struct node*)((uintptr_t) p & ~((uintptr_t) 3));
 }
 
-static inline bool getReplaceFlagInKey(unsigned long key)
+static inline bool isKeyMarked(unsigned long key)
 {
-	return ((key & 80000000UL) == 80000000UL);
+	return ((key & 0x80000000) == 0x80000000);
 }
 
 static inline unsigned long setReplaceFlagInKey(unsigned long key)
 {
-	return (key | 80000000UL);
+	return (key | 0x80000000);
 }
 
 static inline bool isDeleteFlagSet(struct node* p)
@@ -166,7 +180,7 @@ bool insert(struct threadArgs* tData, unsigned long insertKey)
           return(false);
         }
       }
-      if(getKey(lastRightNode->key) == lastRightKey)
+      if(getKey(getAddress(lastRightNode)->key) == lastRightKey)
       {
         break;  
       }
@@ -186,7 +200,7 @@ bool insert(struct threadArgs* tData, unsigned long insertKey)
 		node = getAddress(node);
     if(insertKey < getKey(pnode->key)) //left case
     {
-      if(pnode->lChild.compare_and_swap(replaceNode,node) == node)
+      if(getAddress(pnode)->lChild.compare_and_swap(replaceNode,node) == node)
       {
         tData->isNewNodeAvailable = false;
         tData->successfulInserts++;
@@ -195,7 +209,7 @@ bool insert(struct threadArgs* tData, unsigned long insertKey)
     }
     else //right case
     {
-      if(pnode->rChild.compare_and_swap(replaceNode,node) == node)
+      if(getAddress(pnode)->rChild.compare_and_swap(replaceNode,node) == node)
       {
         tData->isNewNodeAvailable = false;
         tData->successfulInserts++;
@@ -210,487 +224,435 @@ bool insert(struct threadArgs* tData, unsigned long insertKey)
   }
 }
 
-bool remove(struct threadArgs* tData, unsigned long deleteKey)
+bool primarySeekForDelete(struct delSeekRecord* dsr, unsigned long deleteKey)
 {
-	return false;
-}
-
-/*
-bool remove(struct threadArgs* tData, unsigned long deleteKey)
-{
-  struct node* pnode;
+	struct node* pnode;
   struct node* node;
-  unsigned long lastRightKey;
+	unsigned long lastRightKey;
   struct node* lastRightNode;
-  bool keyFound;
-  tData->deleteCount++;
-  
-  while(true)
-  {
-    while(true)
-    {
-      pnode = grandParentHead;
-      node = parentHead;
-      lastRightKey = node->key;
-      lastRightNode = node;
-      keyFound = false;
+	unsigned long nodeKey;
+	struct node* lastUnmarkedPnode;
+	struct node* lastUnmarkedNode;
+	bool keyFound=false;
 
-      while( !isNull(node) ) //Loop until a child of a leaf node which is null is reached
-      {
-				node = getAddress(node);
-        if(deleteKey < node->key)
-        {
-          pnode = node;
-          node = node->lChild;
-        }
-        else if (deleteKey > node->key)
-        {
-          lastRightKey = node->key;
-          lastRightNode = node;
-          pnode = node;
-          node = node->rChild;
-        }
-        else //key to be deleted is found
-        {
-          keyFound = true;
-          break;
-        }
-      }
-      if(keyFound)
-      {
-        break;
-      }
-      if(lastRightNode->key == lastRightKey)
-      {
-        break;
-      }
-    }
-		if(getAddress(pnode->lChild) == node)
+	while(true) //primary seek
+	{
+		pnode = grandParentHead;
+		node = parentHead;
+		nodeKey = node->key;
+		lastRightNode = node;
+		lastRightKey = nodeKey;  
+		lastUnmarkedPnode = pnode;
+		lastUnmarkedNode = node;
+		keyFound = false;
+	
+		while( !isNull(node) ) //Loop until a child of a leaf node which is null is reached
 		{
-			node = pnode->lChild;
+			if(!isNodeMarked(node))
+			{
+				lastUnmarkedPnode = pnode;
+				lastUnmarkedNode = node;
+			}
+			nodeKey = getKey(getAddress(node)->key);
+			if(deleteKey < nodeKey)
+			{
+				pnode = node;
+				node = getAddress(node)->lChild;
+			}
+			else if (deleteKey > nodeKey)
+			{         
+				lastRightNode = node;
+				lastRightKey = nodeKey;
+				pnode = node;
+				node = getAddress(node)->rChild;
+			}
+			else //key to be deleted is found
+			{
+				keyFound = true;
+				break;
+			}
 		}
-		else if(getAddress(pnode->rChild) == node)
+		if(keyFound)
 		{
-			node = pnode->rChild;
+			break;
 		}
-    if(!isNull(node))
-    {
-      if(deleteKey == getAddress(node)->key)
-      {
-				if(pnode->lChild == node) //left case
-				{
-					struct node* nlChild = getAddress(node)->lChild;
-					struct node* nrChild = getAddress(node)->rChild;
-					if(isNull(nlChild)) //simple delete
-					{
-						if(lockEdge(pnode, node, 1))
-						{
-							if(lockEdge(node, nlChild, 1))
-							{
-								if(lockEdge(node, nrChild, 0)) //3 locks are obtained
-								{
-									if(getAddress(node)->key == deleteKey)
-									{
-										if(isNull(nrChild)) //00 case
-										{
-											pnode->lChild = setNullBit(pnode->lChild);
-											unlockLChild(pnode);
-											tData->successfulDeletes++;
-											tData->simpleDeleteCount++;
-											return(true);
-										}
-										else //01 case
-										{
-											pnode->lChild = getAddress(nrChild);
-											tData->successfulDeletes++;
-											tData->simpleDeleteCount++;
-											return(true);
-										}
-									}
-									else
-									{
-										unlockLChild(pnode);
-										unlockLChild(node);
-										unlockRChild(node);
-									}
-								}
-								else
-								{
-									unlockLChild(pnode);
-									unlockLChild(node);
-								}
-							}
-							else
-							{
-								unlockLChild(pnode);
-							}
-						}
-					}
-					else if(isNull(nrChild)) //10 case
-					{
-						if(lockEdge(pnode, node, 1))
-						{
-							if(lockEdge(node, nlChild, 1))
-							{
-								if(lockEdge(node, nrChild, 0)) //3 locks are obtained
-								{
-									if(getAddress(node)->key == deleteKey)
-									{
-										pnode->lChild = getAddress(nlChild);
-										tData->successfulDeletes++;
-										tData->simpleDeleteCount++;
-										return(true);	
-									}
-									else
-									{
-										unlockLChild(pnode);
-										unlockLChild(node);
-										unlockRChild(node);
-									}
-								}
-								else
-								{
-									unlockLChild(pnode);
-									unlockLChild(node);
-								}
-							}
-							else
-							{
-								unlockLChild(pnode);
-							}
-						}
-					}
-					else //11 case
-					{
-						struct node* rpnode;
-						struct node* rnode;
-						struct node* lcrnode;
-						struct node* rcrnode;
-						rpnode = node;
-						rnode = nrChild;
-						lcrnode = getAddress(rnode)->lChild;
-						rcrnode = getAddress(rnode)->rChild;
-						if(!isNull(lcrnode))
-						{
-							while(!isNull(lcrnode))
-							{
-								rpnode = rnode;
-								rnode = lcrnode;
-								lcrnode = getAddress(lcrnode)->lChild;
-							}
-							rcrnode = getAddress(rnode)->rChild;
-							if(lockEdge(rpnode, rnode, 1))
-							{
-                if(lockEdge(rnode, lcrnode, 1))
-                {
-								  if(lockEdge(rnode, rcrnode, 0))
-								  {
-										if(lockEdge(node,nrChild,0))
-										{
-											if(getAddress(node)->key == deleteKey)
-											{
-												getAddress(node)->key = getAddress(rnode)->key;
-												if(isNull(rcrnode))
-												{
-													getAddress(rpnode)->lChild = setNullBit(getAddress(rpnode)->lChild);
-													unlockLChild(rpnode);
-												}
-												else
-												{
-													getAddress(rpnode)->lChild = getAddress(rcrnode);
-												}
-												unlockRChild(node);
-												tData->successfulDeletes++;
-												tData->complexDeleteCount++;
-												return(true);
-											}
-											else
-											{
-												unlockLChild(rpnode);
-												unlockLChild(rnode);
-												unlockRChild(rnode);
-												unlockRChild(node);
-											}
-										}
-										else
-										{
-											unlockLChild(rpnode);
-											unlockLChild(rnode);
-											unlockRChild(rnode);
-										}
-								  }
-								  else
-								  {
-								  	unlockLChild(rpnode);
-                    unlockLChild(rnode);
-								  }
-                }
-                else
-                {
-								  unlockLChild(rpnode);
-                }
-							}
-						}
-						else //spl case in complex delete
-						{
-              if(lockEdge(rnode, lcrnode, 1))
-              {
-							  if(lockEdge(rnode, rcrnode, 0))
-							  {
-									if(lockEdge(node,nrChild,0))
-									{
-										if(getAddress(node)->key == deleteKey)
-										{
-											getAddress(node)->key = getAddress(rnode)->key;
-											if(isNull(rcrnode))
-											{
-												getAddress(node)->rChild = setNullBit(getAddress(node)->rChild);
-												unlockRChild(node);
-											}
-											else
-											{
-												getAddress(node)->rChild = getAddress(rcrnode);
-											}
-											tData->successfulDeletes++;
-											tData->complexDeleteCount++;
-											return(true);
-										}
-										else
-										{
-											unlockLChild(rnode);
-											unlockRChild(rnode);
-											unlockRChild(node);
-										}
-									}
-									else
-									{
-										unlockLChild(rnode);
-										unlockRChild(rnode);
-									}
-							  }
-							  else
-							  {
-                  unlockLChild(rnode);
-							  }
-              }
-						}
-					}
-				}
-				else //right case
-				{
-					struct node* nlChild = getAddress(node)->lChild;
-					struct node* nrChild = getAddress(node)->rChild;
-					if(isNull(nlChild)) //simple delete
-					{
-						if(lockEdge(pnode, node, 0))
-						{
-							if(lockEdge(node, nlChild, 1))
-							{
-								if(lockEdge(node, nrChild, 0)) //3 locks are obtained
-								{
-									if(getAddress(node)->key == deleteKey)
-									{
-										if(isNull(nrChild)) //00 case
-										{
-											pnode->rChild = setNullBit(pnode->rChild);
-											unlockRChild(pnode);
-											tData->successfulDeletes++;
-											tData->simpleDeleteCount++;
-											return(true);
-										}
-										else //01 case
-										{
-											pnode->rChild = getAddress(nrChild);
-											tData->successfulDeletes++;
-											tData->simpleDeleteCount++;
-											return(true);
-										}
-									}
-									else
-									{
-										unlockRChild(pnode);
-										unlockLChild(node);
-										unlockRChild(node);
-									}
-								}
-								else
-								{
-									unlockRChild(pnode);
-									unlockLChild(node);
-								}
-							}
-							else
-							{
-								unlockRChild(pnode);
-							}
-						}
-					}
-					else if(isNull(nrChild)) //10 case
-					{
-						if(lockEdge(pnode, node, 0))
-						{
-							if(lockEdge(node, nlChild, 1))
-							{
-								if(lockEdge(node, nrChild, 0)) //3 locks are obtained
-								{
-									if(getAddress(node)->key == deleteKey)
-									{
-										pnode->rChild = getAddress(nlChild);
-										tData->successfulDeletes++;
-										tData->simpleDeleteCount++;
-										return(true);	
-									}
-									else
-									{
-										unlockRChild(pnode);
-										unlockLChild(node);
-										unlockRChild(node);
-									}
-								}
-								else
-								{
-									unlockRChild(pnode);
-									unlockLChild(node);
-								}
-							}
-							else
-							{
-								unlockRChild(pnode);
-							}
-						}
-					}
-					else //11 case
-					{
-						struct node* rpnode;
-						struct node* rnode;
-						struct node* lcrnode;
-						struct node* rcrnode;
-						rpnode = node;
-						rnode = nrChild;
-						lcrnode = getAddress(rnode)->lChild;
-						rcrnode = getAddress(rnode)->rChild;
-						if(!isNull(lcrnode))
-						{
-							while(!isNull(lcrnode))
-							{
-								rpnode = rnode;
-								rnode = lcrnode;
-								lcrnode = getAddress(lcrnode)->lChild;
-							}
-							rcrnode = getAddress(rnode)->rChild;
-							if(lockEdge(rpnode, rnode, 1))
-							{
-                if(lockEdge(rnode, lcrnode, 1))
-                {
-								  if(lockEdge(rnode, rcrnode, 0))
-								  {
-										if(lockEdge(node,nrChild,0))
-										{
-											if(getAddress(node)->key == deleteKey)
-											{
-												getAddress(node)->key = getAddress(rnode)->key;
-												if(isNull(rcrnode))
-												{
-													getAddress(rpnode)->lChild = setNullBit(getAddress(rpnode)->lChild);
-													unlockLChild(rpnode);
-												}
-												else
-												{
-													getAddress(rpnode)->lChild = getAddress(rcrnode);
-												}
-												unlockRChild(node);
-												tData->successfulDeletes++;
-												tData->complexDeleteCount++;
-												return(true);
-											}
-											else
-											{
-												unlockLChild(rpnode);
-												unlockLChild(rnode);
-												unlockRChild(rnode);
-												unlockRChild(node);
-											}
-										}
-										else
-										{
-											unlockLChild(rpnode);
-											unlockLChild(rnode);
-											unlockRChild(rnode);
-										}
-								  }
-								  else
-								  {
-								  	unlockLChild(rpnode);
-                    unlockLChild(rnode);
-								  }
-                }
-                else
-                {
-								  unlockLChild(rpnode);
-                }
-							}
-						}
-						else //spl case in complex delete
-						{
-              if(lockEdge(rnode, lcrnode, 1))
-              {
-							  if(lockEdge(rnode, rcrnode, 0))
-							  {
-									if(lockEdge(node,nrChild,0))
-									{
-										if(getAddress(node)->key == deleteKey)
-										{
-											getAddress(node)->key = getAddress(rnode)->key;
-											if(isNull(rcrnode))
-											{
-												getAddress(node)->rChild = setNullBit(getAddress(node)->rChild);
-												unlockRChild(node);
-											}
-											else
-											{
-												getAddress(node)->rChild = getAddress(rcrnode);
-											}
-											tData->successfulDeletes++;
-											tData->complexDeleteCount++;
-											return(true);
-										}
-										else
-										{
-											unlockLChild(rnode);
-											unlockRChild(rnode);
-											unlockRChild(node);
-										}
-									}
-									else
-									{
-										unlockLChild(rnode);
-										unlockRChild(rnode);
-									}
-							  }
-							  else
-							  {
-                  unlockLChild(rnode);
-							  }
-              }
-						}
-					}
-				}
-      }
-      else //if(deleteKey == node->key)
-      {
-        tData->unsuccessfulDeletes++;
-        return(false);
-      }
-    }
-    else // for if(node != NULL)
-    {
-      tData->unsuccessfulDeletes++;
-      return(false);
-    } 
-    tData->deleteRetries++;
-  } // end of infinite while loop
+		if(getKey(getAddress(lastRightNode)->key) == lastRightKey)
+		{
+			return(false); //key not found
+		}
+	}
+	dsr->pnode = pnode;
+	dsr->node = node;
+	dsr->lastUnmarkedPnode = lastUnmarkedPnode;
+	dsr->lastUnmarkedNode = lastUnmarkedNode;
+	return(true);
 }
-*/
+
+bool secondarySeekForDelete(struct node* node, struct sDelSeekRecord* sdsr)
+{
+  struct node* rpnode;
+	struct node* rnode;
+	struct node* lcrnode;
+	struct node* rcrnode;
+	struct node* secondaryLastUnmarkedPnode = NULL;
+	struct node* secondaryLastUnmarkedNode = NULL;
+	bool isSplCase=false;
+	
+	rpnode = node;
+	rnode = getAddress(node)->rChild;
+	lcrnode = getAddress(rnode)->lChild;
+	rcrnode = getAddress(rnode)->rChild;
+	
+	if(!isNull(lcrnode))
+	{
+		while(!isNull(lcrnode))
+		{
+			if(!isNodeMarked(lcrnode))
+			{
+				secondaryLastUnmarkedPnode = rnode;
+				secondaryLastUnmarkedNode = lcrnode;
+			}
+			rpnode = rnode;
+			rnode = lcrnode;
+			lcrnode = getAddress(lcrnode)->lChild;
+		}
+		rcrnode = getAddress(rnode)->rChild;
+	}
+	else //spl case in complex delete
+	{
+		isSplCase=true;
+	}
+
+	sdsr->rpnode = rpnode;
+	sdsr->rnode = rnode;
+	sdsr->lcrnode = lcrnode;
+	sdsr->rcrnode = rcrnode;
+	sdsr->secondaryLastUnmarkedPnode = secondaryLastUnmarkedPnode;
+	sdsr->secondaryLastUnmarkedNode = secondaryLastUnmarkedNode;
+	
+	if(isSplCase)
+	{
+		return(true);
+	}
+	else
+	{
+		return(false);
+	}
+}
+
+bool remove(struct threadArgs* tData, unsigned long deleteKey)
+{
+	struct node* pnode;
+  struct node* node;
+	unsigned long lastRightKey;
+  struct node* lastRightNode;
+	unsigned long nodeKey;
+	struct node* lastUnmarkedPnode;
+	struct node* lastUnmarkedNode;
+	struct node* storedNode;
+	bool CLEANUP = false;
+	bool RESTART = false;
+	bool isLeft = true;
+	bool isSimpleDelete=false;
+	tData->deleteCount++;
+	
+	while(true)
+	{
+		RESTART = false;
+		if(!primarySeekForDelete(tData->dsr, deleteKey))
+		{
+			tData->unsuccessfulDeletes++;
+			return(false);
+		}
+		pnode = tData->dsr->pnode;
+		node = tData->dsr->node;
+		lastUnmarkedPnode = tData->dsr->lastUnmarkedPnode;
+		lastUnmarkedNode = tData->dsr->lastUnmarkedNode;
+
+		if(getAddress(pnode)->lChild == node) //left case
+		{
+			isLeft = true;
+		}
+		else if(getAddress(pnode)->rChild == node) //right case
+		{
+			isLeft = false;
+		}
+		else
+		{
+			RESTART = true;
+		}
+		if(!RESTART)
+		{
+			if(!CLEANUP)
+			{
+				struct node* nlChild = getAddress(node)->lChild;
+				struct node* nlChildWithDFlagSet = setDeleteFlag(nlChild);
+				printf("%x\n",nlChild);
+				printf("%x\n",nlChildWithDFlagSet);
+				if(getAddress(node)->lChild.compare_and_swap(nlChildWithDFlagSet, getAddress(nlChild)) != getAddress(nlChild)) //setting DFlag on node's lChild
+				{
+					help(); //CAS failed so help
+					RESTART = true;
+				}
+				else //CAS succeeded
+				{					
+					CLEANUP = true;
+					storedNode = node;
+				}
+			}
+
+			if(!RESTART)
+			{
+				if(storedNode != node) //Someone else removed the node for me
+				{
+					return(true);
+				}
+				
+				printf("%x\n",(struct node*) getAddress(node)->rChild);
+				btsOnDeleteFlag((struct node**)&getAddress(node)->rChild);
+				printf("%x\n",(struct node*) getAddress(node)->rChild);
+				//examine which case applies
+				if(!isNull(getAddress(node)->lChild) && !isNull(getAddress(node)->rChild)) //possible complex delete
+				{
+					struct node* rpnode;
+					struct node* rnode;
+					struct node* lcrnode;
+					struct node* rcrnode;
+					struct node* secondaryLastUnmarkedPnode;
+					struct node* secondaryLastUnmarkedNode;
+					bool isSplCase;
+					bool assumeCASsucceeded = false;
+					bool SECONDARY_RESTART = false;
+					while(true)
+					{
+						isSplCase = secondarySeekForDelete(node, tData->sdsr);
+						rpnode = tData->sdsr->rpnode;
+						rnode = tData->sdsr->rnode;
+						lcrnode = tData->sdsr->lcrnode;
+						rcrnode = tData->sdsr->rcrnode;
+						secondaryLastUnmarkedPnode = tData->sdsr->secondaryLastUnmarkedPnode;
+						secondaryLastUnmarkedNode = tData->sdsr->secondaryLastUnmarkedNode;
+						if(!isKeyMarked(getAddress(node)->key)) //if node's key is marked then someone else has done the below steps for this thread
+						{
+							struct node* nodeAddrWithPromoteFlagSet = setPromoteFlag(getAddress(node));
+							struct node* CASoutput;
+							CASoutput = getAddress(rnode)->lChild.compare_and_swap(nodeAddrWithPromoteFlagSet,NULL);
+							if(CASoutput != NULL) //CAS failed
+							{
+								if(isPromoteFlagSet(CASoutput))
+								{
+									if(getAddress(CASoutput) == getAddress(node))
+									{
+										assumeCASsucceeded = true;
+									}
+									else
+									{
+										//restart primary seek. assert(node->secFlag == DONE)
+										RESTART = true;
+										break; //start from primary seek
+									}
+								}
+								else
+								{
+									if(!isNull(CASoutput))
+									{
+										//restart secondary seek
+										SECONDARY_RESTART = true;
+									}
+									else
+									{
+										//assert(rnode->lChild's delete flag is set)
+										//help operation at secondaryLastUnmarkedEdge
+										//if secondaryLastUnmarkedEdge does not exist, then help node->rChild
+										RESTART = true;
+										break; //start from primary seek
+									}
+								}
+							}
+							else //CAS succeeded
+							{
+								assumeCASsucceeded = true;
+							}
+							if(assumeCASsucceeded)
+							{
+								printf("%x\n",(struct node*) getAddress(rnode)->rChild);
+								btsOnPromoteFlag((struct node**)&getAddress(rnode)->rChild); //set promote flag on rnode->rChild using BTS
+								printf("%x\n",(struct node*) getAddress(rnode)->rChild);		
+								printf("%lu\n",getKey(getAddress(node)->key));
+								getAddress(node)->key = setReplaceFlagInKey(getAddress(rnode)->key); //node's key changed from <0,kN> to <1,kRN>
+								printf("%lu\n",getKey(getAddress(node)->key));
+							}	
+						}
+
+						if(!SECONDARY_RESTART)
+						{
+							if(!isSplCase)
+							{
+								//try removing secondary node
+								if(getAddress(rpnode)->lChild.compare_and_swap(getAddress(getAddress(rnode)->rChild),getAddress(rnode)) == getAddress(rnode))
+								{
+									getAddress(node)->secDoneFlag = true;
+								}
+								else
+								{
+									//help operation at secondaryLastUnmarkedEdge
+									//if secondaryLastUnmarkedEdge does not exist, then override CASinvariant and help node->rChild
+									RESTART = true;
+									break; //start from primary seek
+								}
+							}
+							if(!(getAddress(node)->rChild == NULL && !(getAddress(node)->secDoneFlag)))
+							{
+								printf("1\n");
+								struct node* newNode = (struct node*) malloc(sizeof(struct node));
+								printf("newNode Addr: %x\n",newNode);
+								newNode->key = getKey(getAddress(node)->key);
+								newNode->lChild = getAddress(getAddress(node)->lChild);
+								if(isSplCase)
+								{
+									newNode->rChild = getAddress(getAddress(rnode)->rChild);
+								}
+								else
+								{
+									newNode->rChild = getAddress(getAddress(node)->rChild);
+								}
+								struct node* PCASoutput;
+								if(isLeft)
+								{
+									printf("2l\n");
+									PCASoutput = getAddress(pnode)->lChild.compare_and_swap(newNode,getAddress(node));
+									if( PCASoutput == getAddress(node))
+									{
+										tData->successfulDeletes++;
+										tData->complexDeleteCount++;
+										return(true);
+									}
+								}
+								else
+								{
+									printf("2r\n");
+									printf("%x\n",(struct node*)(getAddress(pnode)->rChild));
+									printf("%x\n",getAddress(getAddress(pnode)->rChild)->key);
+									PCASoutput = getAddress(pnode)->rChild.compare_and_swap(newNode,getAddress(node));
+									printf("%x\n",(struct node*)(getAddress(pnode)->rChild));
+									printf("%x\n",getAddress(getAddress(pnode)->rChild)->key);
+									if( PCASoutput == getAddress(node))
+									{
+										printf("success\n");
+										tData->successfulDeletes++;
+										tData->complexDeleteCount++;
+										return(true);
+									}
+								}
+								if(getAddress(PCASoutput) != getAddress(node))
+								{
+									return(true);
+								}
+								else
+								{
+									//CAS has failed coz the edge is marked. Help at lastUnmarkedEdge.
+									//If lastUnmarkedEdge is (pnode,node) then restart
+									RESTART = true;
+									break; //start from primary seek
+								}								
+							}
+							else
+							{
+								isSimpleDelete = true;
+								break;
+							}
+						}
+					}
+				}
+				else //simple delete
+				{
+					isSimpleDelete = true;
+				}
+				if(isSimpleDelete)
+				{
+					printf("in simple delete");
+					if(isLeft)
+					{
+						printf(" left case");
+						if(isNull(getAddress(node)->lChild))
+						{
+							printf(" lChild is NULL\n");
+							if(getAddress(pnode)->lChild.compare_and_swap(getAddress(getAddress(node)->rChild),getAddress(node)) == getAddress(node))
+							{
+								tData->successfulDeletes++;
+								tData->simpleDeleteCount++;
+								return(true);
+							}
+							else
+							{
+								//if lastUnmarkedEdge is (pnode,node) then restart
+								//else help
+								RESTART = true;
+								printf("restarting in simple delete left case lChild is NULL");
+							}
+						}
+						else
+						{
+							printf(" rChild is NULL\n");
+							if(getAddress(pnode)->lChild.compare_and_swap(getAddress(getAddress(node)->lChild),getAddress(node)) == getAddress(node))
+							{
+								tData->successfulDeletes++;
+								tData->simpleDeleteCount++;
+								return(true);
+							}
+							else
+							{
+								//if lastUnmarkedEdge is (pnode,node) then restart
+								//else help
+								RESTART = true;
+								printf("restarting in simple delete left case rChild is NULL");
+							}
+						}
+					}
+					else
+					{
+						printf(" right case");
+						if(isNull(getAddress(node)->lChild))
+						{
+							printf(" lChild is NULL\n");
+							if(getAddress(pnode)->rChild.compare_and_swap(getAddress(getAddress(node)->rChild),getAddress(node)) == getAddress(node))
+							{
+								tData->successfulDeletes++;
+								tData->simpleDeleteCount++;
+								return(true);
+							}
+							else
+							{
+								//if lastUnmarkedEdge is (pnode,node) then restart
+								//else help
+								printf("restarting in simple delete right case lChild is NULL");
+								RESTART = true;
+							}
+						}
+						else
+						{
+							printf(" rChild is NULL\n");
+							if(getAddress(pnode)->rChild.compare_and_swap(getAddress(getAddress(node)->lChild),getAddress(node)) == getAddress(node))
+							{
+								tData->successfulDeletes++;
+								tData->simpleDeleteCount++;
+								return(true);
+							}
+							else
+							{
+								//if lastUnmarkedEdge is (pnode,node) then restart
+								//else help
+								RESTART = true;
+								printf("restarting in simple delete right case rChild is NULL");
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 void help()
 {
 	
@@ -703,7 +665,8 @@ void nodeCount(struct node* node)
     return;
   }
   numOfNodes++;
-  nodeCount(node->lChild);
+	
+	nodeCount(node->lChild);
   nodeCount(node->rChild);
 }
 

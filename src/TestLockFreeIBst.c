@@ -120,6 +120,8 @@ int main(int argc, char *argv[])
     tArgs[i]->complexDeleteCount=0;
     tArgs[i]->newNode=NULL;
     tArgs[i]->isNewNodeAvailable=false;
+		tArgs[i]->dsr = (struct delSeekRecord*) malloc(sizeof(struct delSeekRecord));
+		tArgs[i]->sdsr = (struct sDelSeekRecord*) malloc(sizeof(struct sDelSeekRecord));
   }
 
   for(int i=0;i<NUM_OF_THREADS;i++)

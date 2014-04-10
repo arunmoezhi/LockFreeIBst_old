@@ -10,13 +10,32 @@
 #include<gsl/gsl_randist.h>
 #include<assert.h>
 #define MAX_KEY 0x7FFFFFFF
-//#define STATS_ON
+#define STATS_ON
 
 struct node
 {
   unsigned long key;									//format <replaceFlag, address>
   tbb::atomic<struct node*> lChild;		//format <address, deleteFlag, promoteFlag>
   tbb::atomic<struct node*> rChild;		//format <address, deleteFlag, promoteFlag>
+	bool secDoneFlag;
+};
+
+struct delSeekRecord
+{
+	struct node* pnode;
+  struct node* node;
+	struct node* lastUnmarkedPnode;
+	struct node* lastUnmarkedNode;
+};
+
+struct sDelSeekRecord
+{
+	struct node* rpnode;
+  struct node* rnode;
+	struct node* lcrnode;
+	struct node* rcrnode;
+	struct node* secondaryLastUnmarkedPnode;
+	struct node* secondaryLastUnmarkedNode;
 };
 
 struct threadArgs
@@ -39,6 +58,8 @@ struct threadArgs
   unsigned long complexDeleteCount;
   struct node* newNode;
   bool isNewNodeAvailable;
+	struct delSeekRecord* dsr;
+	struct sDelSeekRecord* sdsr;
 };
 
 void createHeadNodes();
