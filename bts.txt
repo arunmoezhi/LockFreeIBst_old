@@ -1,0 +1,101 @@
+[Assembly programming channel, all architectures welcome. Don't ask to ask! Use a pastebin if appropriate! Check your manuals! Further info: http://www.dinkypage.com/177366]
+[16:54] == arun [4cb8f2d1@gateway/web/freenode/ip.76.184.242.209] has joined ##asm
+[16:55] == bluesm [uid13438@gateway/web/irccloud.com/x-xxabyxaoumrmqjch] has quit [Quit: Connection closed for inactivity]
+[16:56] == Isp-sec [~palach@89-178-38-82.broadband.corbina.ru] has quit [Ping timeout: 240 seconds]
+[16:57] <arun> hi
+[16:58] <arun> I have a question on how to do bit-test-and-set using an assembly intrinsic
+[16:58] <arun> detailed question at http://stackoverflow.com/questions/22974382/assembly-intrinsic-for-bit-test-and-set-bts
+[17:02] == burp2 [~fail@fctnnbsc36w-142162020064.dhcp-dynamic.FibreOp.nb.bellaliant.net] has left ##asm []
+[17:04] == NightQuest [NQ@c-50-139-68-31.hsd1.or.comcast.net] has joined ##asm
+[17:04] == Jester01 [~Jester01@91.147.247.182]
+[17:04] ==  realname : Csaba Halasz
+[17:04] ==  channels : ##asm
+[17:04] ==  server   : cameron.freenode.net [Vilnius, Lithuania, EU]
+[17:04] ==  account  : Jester01
+[17:04] == End of WHOIS
+[17:04] == `Ivan [~tapz@stalkr.net]
+[17:04] ==  realname : ivan
+[17:04] ==  channels : ##asm
+[17:04] ==  server   : hobana.freenode.net [Bucharest, RO]
+[17:04] ==  account  : Ivanlef0u
+[17:04] == End of WHOIS
+[17:06] == napcode [~napcode@c64.informatik.tu-freiberg.de] has joined ##asm
+[17:07] <unpro> for pe binaries, how do you calculate where the .code section is
+[17:10] == napcode [~napcode@c64.informatik.tu-freiberg.de] has quit [Ping timeout: 252 seconds]
+[17:10] <Jester01> arun: in that case sync_fetch_and_or seems okay, it won't use bts on x86 but a "lock or"
+[17:11] <Jester01> which should be fine
+[17:14] <arun> If I were to do a Compare-And-Swap, I would have to test if CAS succeeded or not. In case of BTS I need not check if it succeeded or failed. So if I use sync_fetch_and_or, can I safely assume that the bit has been set atomically?
+[17:14] <Jester01> yeah that's the idea :)
+[17:15] == Dreadnaught [~Dreadnaug@040.d.002.brs.iprimus.net.au] has joined ##asm
+[17:15] == Dreadnaught [~Dreadnaug@040.d.002.brs.iprimus.net.au] has quit [Changing host]
+[17:15] == Dreadnaught [~Dreadnaug@tlug/member/kulrak] has joined ##asm
+[17:16] == jitsuin [~chatzilla@cpe-23-240-223-21.socal.res.rr.com] has joined ##asm
+[17:17] <arun> Thanks for the answer in SO. Can you please make it elaborate so that it looks like a complete answer.
+[17:18] <Jester01> what do you want elaborated :)
+[17:18] == ARM9 [~ARM9@46-236-101-75.customer.t3.se] has quit [Ping timeout: 240 seconds]
+[17:19] <arun> a code snippet with sync_fetch_and_or would be nice. Or let me write a snippet and you can verify
+[17:20] <Jester01> __sync_or_and_fetch(&address, 1);
+[17:20] <Jester01> not much of a snippet :)
+[17:22] <arun> i think it should be __sync_or_and_fetch(&address, 2);
+[17:22] <arun> since I have two bits flagBit1 and flagBit2 and I'm trying to set flagBit1
+[17:23] == PJBoy [~fusion@cpc18-aztw24-2-0-cust884.18-1.cable.virginm.net] has joined ##asm
+[17:23] <Jester01> yeah whichever bit you want
+[17:23] <arun> thanks
+[17:27] == Betal [~Beta@unaffiliated/betal] has joined ##asm
+[17:29] == vinleod [~vinleod@c-67-166-81-173.hsd1.or.comcast.net] has quit [Quit: ["Textual IRC Client: www.textualapp.com"]]
+[17:31] <arun> shouldn't I specify memmodel?
+[17:38] <Jester01> that's for the newer atomic stuff
+[17:41] == L3tsXpl0it [~L3tsXpl0i@121.238.99.84.rev.sfr.net] has quit [Ping timeout: 240 seconds]
+[17:42] == L3tsXpl0it [~L3tsXpl0i@66.151.68.86.rev.sfr.net] has joined ##asm
+[17:42] <arun> ya. got it. &address should be of what type? I'm trying __sync_or_and_fetch((uintptr_t) address,2)
+[17:42] <arun> But I get  error: incompatible type for argument 1 of ‘__sync_or_and_fetch’
+[17:43] == jitsuin [~chatzilla@cpe-23-240-223-21.socal.res.rr.com] has quit [Ping timeout: 265 seconds]
+[17:44] <Jester01> do you want to dereference the address or manipulate the address itself?
+[17:44] <Jester01> for the address itself, just use &address
+[17:44] <arun> here is the pastebin
+[17:44] <arun> http://pastebin.com/sHeQkcs1
+[17:45] == wiprogres [~tyforhelp@c-24-13-150-63.hsd1.il.comcast.net] has joined ##asm
+[17:45] <Jester01> so, &n1->lChild
+[17:46] <Jester01> n1->lChild:1aa8030
+[17:46] <Jester01> n1->lChild:1aa8032
+[17:46] <Jester01> works fine here.
+[17:47] <wiprogres> so, n1->lChild
+[17:47] <arun> I get compilation error. Am I missing any compiler flags?
+[17:47] <wiprogres> echo $?
+[17:48] <Jester01> did you add the & sign?
+[17:48] <Jester01> your paste is missing the &
+[17:48] <Jester01> and has the cast instead :)
+[17:48] <Jester01> __sync_or_and_fetch(&n1->lChild,2);
+[17:48] == AlbertoSilva [~AlbertoSi@186.204.114.218] has joined ##asm
+[17:49] <wiprogres> so, &n1->lChild
+[17:49] <Jester01> sounds like a bot
+[17:49] <arun> Yes. Changed it and it works. But what did I do wrong here.
+[17:50] <wiprogres> are there any asm bots present?
+[17:50] <arun> n1->lChild is of type "struct node*". So I'm just passing the pointer here right. So it should have compiled fine. But the result would have been wrong
+[17:51] <Jester01> however "struct node" is not allowed in an atomic op
+[17:51] <arun> oh. I see.
+[17:51] <Jester01> not sure why the casting didn't work though
+[17:52] <Jester01> oh the cast in the paste was not to a pointer
+[17:52] <arun> did you try?
+[17:52] <arun> I updated it from uint64_t to uintptr_t
+[17:52] <arun> but still the same issue
+[17:52] <Jester01> indeed
+[17:53] <Jester01> is uintptr_t a pointer or an integer type large enough to hold a pointer? :)
+[17:53] * Jester01 looks
+[17:53] <Jester01> yeah that's the problem
+[17:53] <arun> I dont understand..
+[17:53] == ioanel [~Icedove@86.124.198.237] has quit [Remote host closed the connection]
+[17:54] <Jester01> uintptr_t is NOT a pointer
+[17:54] == nikio_ [~nikio@37.98.222.105] has quit [Ping timeout: 240 seconds]
+[17:54] <Jester01> it's an "Integer type capable of holding a value converted from a void pointer and then be converted back to that type"
+[17:54] <Jester01> casting to (uint64_t*) works though
+[17:54] <arun> oh. Then it is an integer and thats why I was not able to do atomic op on it
+[17:54] <Jester01> yessir
+[17:55] <Jester01> iof course as you said, it doesn't do what you want, but compiles and runs :)
+[17:55] <Jester01> *of
+[17:55] <arun> cool.I will settle with this
+[17:55] <arun>  __sync_or_and_fetch(&n1->lChild,2);
+[17:56] <arun> "compiles and runs". Thats a terrible beast to tackle than a "wont compile"
+[17:56] <arun> :)
+[17:57] <arun> Anyways thanks Jester01 and wiprogres for all the help
+[17:57] <Jester01> yw
