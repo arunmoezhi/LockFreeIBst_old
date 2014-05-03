@@ -1,4 +1,5 @@
 #include"header.h"
+
 int NUM_OF_THREADS;
 int findPercent;
 int insertPercent;
@@ -46,17 +47,23 @@ void *operateOnTree(void* tArgs)
   for(int i=0;i< (int)iterations;i++)
   {
     chooseOperation = gsl_rng_uniform(r)*100;
+		unsigned long key = gsl_rng_get(r)%keyRange + 1;
+		if(key > keyRange)
+		{
+			printf("%lu\n",key);
+			assert(key < keyRange);
+		}
     if(chooseOperation < findPercent)
     {
-      lookup(tData,gsl_rng_get(r)%keyRange + 1);
+      lookup(tData, key);
     }
     else if (chooseOperation < insertPercent)
     {
-      insert(tData,gsl_rng_get(r)%keyRange + 1);
+      insert(tData, key);
     }
     else
     {
-      remove(tData,gsl_rng_get(r)%keyRange + 1);
+      remove(tData, key);
     }
   }
   clock_gettime(CLOCK_REALTIME,&e);
@@ -120,8 +127,8 @@ int main(int argc, char *argv[])
     tArgs[i]->complexDeleteCount=0;
     tArgs[i]->newNode=NULL;
     tArgs[i]->isNewNodeAvailable=false;
-		tArgs[i]->dsr = (struct delSeekRecord*) malloc(sizeof(struct delSeekRecord));
-		tArgs[i]->sdsr = (struct sDelSeekRecord*) malloc(sizeof(struct sDelSeekRecord));
+		tArgs[i]->psr = (struct primarySeekRecord*) malloc(sizeof(struct primarySeekRecord));
+		tArgs[i]->opr = (struct opRecord*) malloc(sizeof(struct opRecord));
   }
 
   for(int i=0;i<NUM_OF_THREADS;i++)
