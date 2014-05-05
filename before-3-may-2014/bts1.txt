@@ -1,0 +1,129 @@
+== arun [4cb8f2d1@gateway/web/freenode/ip.76.184.242.209] has joined ##asm
+[13:55] == WolfSaint [~WolfSaint@c-76-31-140-108.hsd1.tx.comcast.net] has joined ##asm
+[13:55] == doomlord_ [~servitor@host86-184-9-224.range86-184.btcentralplus.com] has quit [Read error: Connection reset by peer]
+[13:56] == Atrumx [~5d6@unaffiliated/fivedeltasix] has quit [Quit: Exit]
+[13:57] <arun> need help in atomically setting a bit using BTS assembly instruction
+[13:57] == 92AAAYYVR [~bezoka@ccq115.neoplus.adsl.tpnet.pl] has quit [Ping timeout: 240 seconds]
+[13:57] <arun> this post in SO http://stackoverflow.com/questions/1983303/using-bts-assembly-instruction-with-gcc-compiler has an answer as:
+[13:58] <arun> inline void SetBit(*array, bit) {     asm("bts %1,%0" : "+m" (*array) : "r" (bit)); }
+[13:58] <arun> but I don't quite understand the semantics
+[13:58] <VOID> yo! who said my name!
+[13:59] <arun> also this post has a solution with assembly intrinsics. But now I want to use asm instead of an intrinsic
+[13:59] <arun> http://stackoverflow.com/questions/22974382/assembly-intrinsic-for-bit-test-and-set-bts
+[13:59] == INFINMED [~utopian@nc-69-69-185-109.dhcp.embarqhsd.net] has quit [Read error: Connection reset by peer]
+[13:59] <arun> @VOID.. I was just trying to return you!!
+[14:00] <GeDaMo> arun: which bit don't you understand? The constraints?
+[14:00] <OxFEEDBACC> the inline version looks okay, just that it is restricted to a machine word length of a bit array...
+[14:01] <arun> I have dug deeper upto intrinsics level. Never did asm programming. People in SO said this solution worked for them. But before I use it in my code I would like to understand it
+[14:03] <arun> My current understanding of the "SetBit" function is it takes a pointer to any array and an index of a bit of the array which is to be BTSed atomically
+[14:03] <GeDaMo> http://siyobik.info.gf/main/reference/instruction/BTS
+[14:03] <OxFEEDBACC> why do you emphasize "atomically"?
+[14:04] <GeDaMo> If you really want it to be atomic, I think you might need lock for a memory operand
+[14:04] == bezoka_ [~bezoka@ccq115.neoplus.adsl.tpnet.pl] has joined ##asm
+[14:05] <GeDaMo> Ah, from the BTS description: "This instruction can be used with a LOCK prefix to allow the instruction to be executed atomically."
+[14:05] == wbooze [~wbooze@xdsl-78-35-181-214.netcologne.de] has quit [Read error: Connection reset by peer]
+[14:05] <arun> what are  %1,%0
+[14:05] <OxFEEDBACC> k, GeDaMo ... but i still don't get its importance...
+[14:06] <OxFEEDBACC> %1 is the second parameter passed to asm(), %0 is the first...
+[14:06] <arun> Currently I'm using Compare_and_swap in a while loop until it succeeds.
+[14:06] <GeDaMo> OxFEEDBACC: so that other cores don't alter the memory in the middle of this instruction operating
+[14:06] <OxFEEDBACC> k, GeDaMo ...... a threading thing...
+[14:06] == Rainb [c9d80cb6@gateway/web/freenode/ip.201.216.12.182] has quit [Ping timeout: 240 seconds]
+[14:07] <GeDaMo> arun: those are parameters derived from the constraints, %1 will be bit and %0 will be *array
+[14:07] <arun> bit is just a number.
+[14:08] <GeDaMo> It's a variable
+[14:08] <OxFEEDBACC> the "+m" and "r" tell the compiler that "*array" is a memory operand and to put "bit" into a register, and
+[14:08] <OxFEEDBACC> -and
+[14:09] == wbooze [~wbooze@xdsl-78-35-181-214.netcologne.de] has joined ##asm
+[14:10] <arun> lets say i have a tree structure. struct node{int key, struct node* lChild, struct node* rChild}. And I steal the LSB of the address of a node to store a flag. Now if I want to set the flag on node->lChild, how should I call this function
+[14:10] == bezoka_ [~bezoka@ccq115.neoplus.adsl.tpnet.pl] has quit [Read error: Connection reset by peer]
+[14:11] <GeDaMo> SetBit(&node->lChild, 0)
+[14:11] <GeDaMo> Hmmm ... that might need parentheses SetBit(&(node->lChild), 0)
+[14:12] == sbingner [~sam@phathack/sbingner] has quit [Ping timeout: 245 seconds]
+[14:12] <arun> GeDaMo: thanks!! So here "0" is the index of LSB.
+[14:12] <GeDaMo> Yes
+[14:13] <arun> So if I have a node structure as <address,flag1,flag2,flag3> and if I want to just set flag1, then I should be doing SetBit(&(node->lChild),2)
+[14:14] <OxFEEDBACC> what if the flag is false? :-p
+[14:14] <GeDaMo> Are flag1,2,3 the three least significant bits?
+[14:14] <GeDaMo> Yes
+[14:14] <arun> flag1,2,3 are lsbs.
+[14:15] <arun> Flag can be true or false. I don't care. I just want to blindly set it. My invariant is when BTS returns the flag be better set :) no matter what it was before
+[14:15] <OxFEEDBACC> ..........
+[14:15] <OxFEEDBACC> k
+[14:16] <GeDaMo> Just so long as your address is aligned and you mask off or shift right those least significant bits
+[14:16] <OxFEEDBACC> you could be better of by something like *lChild&=7 then...
+[14:17] <OxFEEDBACC> rather lChild|=7 ...
+[14:17] <GeDaMo> Also, I think you'll need the lock: prefix on your inline asm if you want it to be atomic
+[14:17] <arun> @GeDaMo, i assume the address is aligned and I assume the last 3 bits are zero. Infact I'm stealing 3 bits from the address and not just 1 bit.
+[14:18] <GeDaMo> You assume? You don't force it to be aligned? :|
+[14:18] <arun> @0xFEEDBACC: using & is not threadsafe
+[14:19] <arun> @GeDaMo, I'm not worried about portability yet. I just want to get my code up and running. In my machine I always get the addresses aligned. I use gcc -O2
+[14:20] <GeDaMo> Are you on a 64 bit OS?
+[14:20] <arun> I thought using -O2 gives aligned address. If I'm wrong please let me know. I will fix it
+[14:20] <OxFEEDBACC> arun: then write an inline function that uses OR, rather than BTS ...
+[14:20] <arun> Yes I'm on a 64 bit linux OS
+[14:20] <OxFEEDBACC> that would make 1 instead of 3 "atomic" instructions...
+[14:20] <GeDaMo> That's probably why it's aligned
+[14:20] <vanila> how should I practice assembly, to learn it better?
+[14:21] <arun> @0xFEEDBACC : you mean using OR like this http://stackoverflow.com/questions/22974382/assembly-intrinsic-for-bit-test-and-set-bts
+[14:22] <OxFEEDBACC> like that, yes...
+[14:22] <arun> @GeDaMo does -O2 always ensures aligned memory. I use facebook's jemalloc as my memory allocator
+[14:22] <OxFEEDBACC> or has the positive side effect of being able to set multiple bits at once...
+[14:22] == slash^ [~unknown@141.84.69.85] has quit [Read error: Connection reset by peer]
+[14:23] <OxFEEDBACC> alignment shouldn't really be an -On issue, because several alignments are dictated by system conventions...
+[14:23] <GeDaMo> arun: but aligned to what?
+[14:25] <arun> since I steal 3 bits from addresses, I need the memory returned by malloc to be aligned so that the last 3 bits are always zero.
+[14:25] == otherflow [~otherflow@vil69-4-82-228-207-179.fbx.proxad.net] has joined ##asm
+[14:25] == otherflow [~otherflow@vil69-4-82-228-207-179.fbx.proxad.net] has quit [Changing host]
+[14:25] == otherflow [~otherflow@unaffiliated/otherflow] has joined ##asm
+[14:26] <arun> @0xFEEDBACC : use OR like this? static inline void btsOnFlag2(struct node** p) {   void** ptr = (void**) p;   __sync_or_and_fetch(ptr,2); }
+[14:26] <GeDaMo> I don't see anything in the description of O2 about aligning data
+[14:26] <OxFEEDBACC> i don't have any idea about compiler intrinsics, arun... sorry...
+[14:27] == jewel_ [~jewel@105-236-108-238.access.mtnbusiness.co.za] has quit [Ping timeout: 240 seconds]
+[14:27] <arun> no problems :)
+[14:27] <OxFEEDBACC> but OR <value>,2 will only set bit 1...
+[14:28] <OxFEEDBACC> OR <value>,7 will set bits 0, 1, and 2
+[14:28] <arun> I dont want to set all the bits at a single shot. each bit has a different purpose and will be set based on the application logic
+[14:29] <arun> @GeDaMo: will the compiler option -align work?
+[14:29] <OxFEEDBACC> well, you can set the value-to-be-ored-with before you do the critical lock-and-modify operation...
+[14:29] <GeDaMo> Having multiple cores accessing the same memory will cause massive slowdowns
+[14:30] <GeDaMo> Sorry, I don't know about -align
+[14:30] == Twipply [~Twipply3@cpc1-mapp10-2-0-cust641.12-4.cable.virginm.net] has quit [Quit: Leaving]
+[14:30] <arun> It will slowdown. but do I have any other option.
+[14:31] <OxFEEDBACC> yeah, fuck multithreading :-D
+[14:31] <OxFEEDBACC> only use it when no alternatives available...
+[14:31] <arun> why would I need an atomic operation for a single threaded code
+[14:31] <GeDaMo> That depends on what problem you're trying to solve
+[14:32] <OxFEEDBACC> i didn't say you need a lock w/o MT...
+[14:32] == liquidfl0ppy [~liquidfl0@c-50-162-178-38.hsd1.fl.comcast.net] has joined ##asm
+[14:32] <arun> I'm creating a concurrent search tree where modifications can happen concurrently
+[14:32] <OxFEEDBACC> just keep your code as simple and straight-forward as even possible...
+[14:33] <GeDaMo> Is it possible to split the tree into sections which can searched / updated by separate cores without them accessing the same memory?
+[14:33] <OxFEEDBACC> you could just use a software lock on the whole structure when a modification is in process....
+[14:33] <OxFEEDBACC> then you just need to keep modifications quick in order to keep stalls low...
+[14:34] <arun> nope. there is no constraint on what part of the tree gets modified by which core
+[14:34] <arun> in practice for trees of large size contention is low and my code works well
+[14:34] <GeDaMo> But if you split the tree up, there could be
+[14:35] <GeDaMo> Just a thought
+[14:36] <arun> I understand what you are trying to say. But I'm trying to increase concurrency without splitting the tree
+[14:38] <GeDaMo> Increase concurrency? Or increase performance?
+[14:38] <arun> increase performance by incresing concurrency
+[14:39] <GeDaMo> Just so long as you're sure that increasing concurrency /will/ increase performance :P
+[14:39] == fragMental [~fragMenta@46.115.49.169] has joined ##asm
+[14:39] <arun> So far I'm very successful
+[14:39] <arun> :)
+[14:40] <OxFEEDBACC> arun, did you read what i wrote above?
+[14:40] <OxFEEDBACC> OxFEEDBACC> well, you can set the value-to-be-ored-with before you do the critical lock-and-modify operation...
+[14:41] <arun> @0xFEEDBACC: Yes I did read. I'm bit slow in typing.. I'm still trying to understand you said
+[14:42] <OxFEEDBACC> for example, if the flags you want to set depend on cond1, cond2, cond3, then you do value_to_be_ored_with=(cond1<<2)|(cond2<<1)|cond3
+[14:43] <OxFEEDBACC> then you do lock_and_or(*array,value_to_be_ored_with)
+[14:43] <OxFEEDBACC> or without the asterisk... whatever...
+[14:45] <arun> hmm I understood
+[14:45] <arun> thanks
+[14:46] <OxFEEDBACC> no worries... if you're gonna earn big buggs with that, i'll return to demand some interest :-p
+[14:48] <arun> Haha.. good one.. bucks or buggs.. lets c
+[14:48] <OxFEEDBACC> let's c or let's asm... that is here the question :-p
+[14:50] <Apic> B-)
+[14:51] <arun> and also there is a middleground. intrinsic
+[14:51] <OxFEEDBACC> tolkiens story's are quite fictitious though :-p
+[14:52] <OxFEEDBACC> s/story's/stories/
