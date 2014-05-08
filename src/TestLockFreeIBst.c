@@ -133,6 +133,7 @@ int main(int argc, char *argv[])
     tArgs[i]->isNewNodeAvailable=false;
 		tArgs[i]->mainSeekRecord = (struct seekRecord*) malloc(sizeof(struct seekRecord));
 		tArgs[i]->state = (struct stateRecord*) malloc(sizeof(struct stateRecord));
+		tArgs[i]->state->seekRecord = (struct seekRecord*) malloc(sizeof(struct seekRecord));
   }
 
   for(int i=0;i<NUM_OF_THREADS;i++)

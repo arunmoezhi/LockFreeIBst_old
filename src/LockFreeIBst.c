@@ -13,12 +13,12 @@ bool search(struct tArgs* t, unsigned long key)
 	if(nKey == key)
 	{
 		t->successfulReads++;
-		return true;
+		return(true);
 	}
 	else
 	{
 		t->unsuccessfulReads++;
-		return false;
+		return(false);
 	}	
 }
 
@@ -41,7 +41,7 @@ bool insert(struct tArgs* t, unsigned long key)
 		if(nKey == key)
 		{
 			t->unsuccessfulInserts++;
-			return false;
+			return(false);
 		}
 		//create a new node and initialize its fields
 		if(!t->isNewNodeAvailable)
@@ -72,5 +72,90 @@ bool insert(struct tArgs* t, unsigned long key)
 
 bool remove(struct tArgs* t, unsigned long key)
 {
-	return true;
+	struct node* node;
+	struct node* parent;
+	struct node* freeNode;
+	struct node* freeParent;
+	struct seekRecord* mainSeekRecord = t->mainSeekRecord;
+	unsigned long nKey;
+	bool needToHelp;
+	bool result;
+	//obtain a state record and initialize it
+	struct stateRecord* state = t->state;
+	state->mode = INJECTION;
+	state->key = key;
+	while(true)
+	{
+		seek(state->key,mainSeekRecord);
+		node = mainSeekRecord->node;
+		parent = mainSeekRecord->parent;
+		nKey = getKey(node->markAndKey);
+		if(state->key != nKey)
+		{
+			//the key does not exist in the tree
+			if(state->mode == INJECTION)
+			{
+				return(false);
+			}
+			else
+			{
+				return(true);
+			}
+		}
+		needToHelp = false;
+		//perform appropriate action depending on the mode
+		if(state->mode == INJECTION)
+		{
+			//store a reference to the node
+			state->node = node;
+			//attempt to inject the operation at the node
+			result = inject(state);
+			if(!result)
+			{
+				needToHelp = true;
+			}
+		}
+		//mode would have changed if the operation was injected successfully
+		if(state->mode != INJECTION)
+		{
+			//if the node found by the seek function is different from the one stored in state record, then return
+			if(state->node != node)
+			{
+				return(true);
+			}
+			//update the parent information using the most recent seek
+			state->parent = parent;
+		}
+		if(state->mode == DISCOVERY)
+		{
+			findAndMarkSuccessor(state);
+		}
+		if(state->mode == DISCOVERY)
+		{
+			removeSuccessor(state);
+		}
+		if(state->mode == CLEANUP)
+		{
+			result = cleanup(state,0);
+			if(result)
+			{
+				return(true);
+			}
+			else
+			{
+				nKey = getKey(node->markAndKey);
+				state->key = nKey;
+			}
+			if(mainSeekRecord->freeNode != node)
+			{
+				needToHelp = true;
+			}
+		}
+		if(needToHelp)
+		{
+			freeNode = mainSeekRecord->freeNode;
+			freeParent = mainSeekRecord->freeParent;
+			deepHelp(freeNode,freeParent);
+		}
+	}
 }

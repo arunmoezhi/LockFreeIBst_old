@@ -57,3 +57,8 @@ static inline struct node* addressWithNullBit(struct node* p)
 {
 	return (struct node*)((uintptr_t) p & ~((uintptr_t) DELETE_AND_PROMOTE_BIT));
 }
+
+static inline struct node* addressWithDFlag(struct node* p)
+{
+	return (struct node*)((uintptr_t) p & ~((uintptr_t) ADDRESS_WITH_DFLAG));
+}

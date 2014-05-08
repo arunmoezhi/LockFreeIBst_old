@@ -25,16 +25,6 @@ static inline struct node* newLeafNode(unsigned long key)
   return(node);
 }
 
-static inline struct node* newReplaceNode(unsigned long key, struct node* lChild, struct node* rChild)
-{
-  struct node* node = (struct node*) malloc(sizeof(struct node));
-  node->markAndKey = key;
-  node->child[LEFT] = lChild; 
-  node->child[RIGHT] = rChild;
-	node->readyToReplace=false;
-  return(node);
-}
-
 void createHeadNodes()
 {
   R = newLeafNode(INF_R);

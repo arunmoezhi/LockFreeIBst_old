@@ -19,6 +19,7 @@
 #define BTS_P_FLAG 0
 #define BTS_D_FLAG 1
 #define ADDRESS_MASK 7
+#define ADDRESS_WITH_DFLAG 5
 #define KEY_MASK 0x80000000
 #define K 2
 #define LEFT 0
