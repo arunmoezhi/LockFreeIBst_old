@@ -7,8 +7,8 @@ bool search(struct tArgs* t, unsigned long key)
 	struct node* node;
 	unsigned long nKey;
 	
-	seek(key,t->mainSeekRecord);
-	node = t->mainSeekRecord->node;
+	seek(key,t->mySeekRecord);
+	node = t->mySeekRecord->node;
 	nKey = getKey(node->markAndKey);
 	if(nKey == key)
 	{
@@ -35,8 +35,8 @@ bool insert(struct tArgs* t, unsigned long key)
 	
 	while(true)
 	{
-		seek(key,t->mainSeekRecord);
-		node = t->mainSeekRecord->node;
+		seek(key,t->mySeekRecord);
+		node = t->mySeekRecord->node;
 		nKey = getKey(node->markAndKey);
 		if(nKey == key)
 		{
@@ -66,7 +66,7 @@ bool insert(struct tArgs* t, unsigned long key)
 		{
 			continue;
 		}
-		deepHelp(t->mainSeekRecord->freeNode,t->mainSeekRecord->freeParent);
+		deepHelp(t->mySeekRecord->lastUNode,t->mySeekRecord->lastUParent);
 	}
 }
 
@@ -74,26 +74,26 @@ bool remove(struct tArgs* t, unsigned long key)
 {
 	struct node* node;
 	struct node* parent;
-	struct node* freeNode;
-	struct node* freeParent;
-	struct seekRecord* mainSeekRecord = t->mainSeekRecord;
+	struct node* lastUNode;
+	struct node* lastUParent;
+	struct seekRecord* mySeekRecord = t->mySeekRecord;
 	unsigned long nKey;
 	bool needToHelp;
 	bool result;
-	//obtain a state record and initialize it
-	struct stateRecord* state = t->state;
-	state->mode = INJECTION;
-	state->key = key;
+	//initialize the state record
+	struct stateRecord* myState = t->myState;
+	myState->mode = INJECTION;
+	myState->key = key;
 	while(true)
 	{
-		seek(state->key,mainSeekRecord);
-		node = mainSeekRecord->node;
-		parent = mainSeekRecord->parent;
+		seek(myState->key,mySeekRecord);
+		node = mySeekRecord->node;
+		parent = mySeekRecord->parent;
 		nKey = getKey(node->markAndKey);
-		if(state->key != nKey)
+		if(myState->key != nKey)
 		{
 			//the key does not exist in the tree
-			if(state->mode == INJECTION)
+			if(myState->mode == INJECTION)
 			{
 				return(false);
 			}
@@ -104,39 +104,39 @@ bool remove(struct tArgs* t, unsigned long key)
 		}
 		needToHelp = false;
 		//perform appropriate action depending on the mode
-		if(state->mode == INJECTION)
+		if(myState->mode == INJECTION)
 		{
 			//store a reference to the node
-			state->node = node;
+			myState->node = node;
 			//attempt to inject the operation at the node
-			result = inject(state);
+			result = inject(myState);
 			if(!result)
 			{
 				needToHelp = true;
 			}
 		}
 		//mode would have changed if the operation was injected successfully
-		if(state->mode != INJECTION)
+		if(myState->mode != INJECTION)
 		{
 			//if the node found by the seek function is different from the one stored in state record, then return
-			if(state->node != node)
+			if(myState->node != node)
 			{
 				return(true);
 			}
 			//update the parent information using the most recent seek
-			state->parent = parent;
+			myState->parent = parent;
 		}
-		if(state->mode == DISCOVERY)
+		if(myState->mode == DISCOVERY)
 		{
-			findAndMarkSuccessor(state);
+			findAndMarkSuccessor(myState);
 		}
-		if(state->mode == DISCOVERY)
+		if(myState->mode == DISCOVERY)
 		{
-			removeSuccessor(state);
+			removeSuccessor(myState);
 		}
-		if(state->mode == CLEANUP)
+		if(myState->mode == CLEANUP)
 		{
-			result = cleanup(state,0);
+			result = cleanup(myState,0);
 			if(result)
 			{
 				return(true);
@@ -144,18 +144,19 @@ bool remove(struct tArgs* t, unsigned long key)
 			else
 			{
 				nKey = getKey(node->markAndKey);
-				state->key = nKey;
+				myState->key = nKey;
 			}
-			if(mainSeekRecord->freeNode != node)
+			//help only if the helpee node is different from the node of interest
+			if(mySeekRecord->lastUNode != node)
 			{
 				needToHelp = true;
 			}
 		}
 		if(needToHelp)
 		{
-			freeNode = mainSeekRecord->freeNode;
-			freeParent = mainSeekRecord->freeParent;
-			deepHelp(freeNode,freeParent);
+			lastUNode = mySeekRecord->lastUNode;
+			lastUParent = mySeekRecord->lastUParent;
+			deepHelp(lastUNode,lastUParent);
 		}
 	}
 }

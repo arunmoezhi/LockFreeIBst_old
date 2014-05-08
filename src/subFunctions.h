@@ -12,11 +12,11 @@ void seek(unsigned long key, struct seekRecord* s)
 {
 	struct node* prev;
 	struct node* curr;
-	struct node* freeParent;
-	struct node* freeNode;
-	struct node* rightNode;
+	struct node* lastUParent;
+	struct node* lastUNode;
+	struct node* lastRNode;
 	struct node* address;
-	unsigned long rightKey;
+	unsigned long lastRKey;
 	unsigned long cKey;
 	int which;
 	bool done;
@@ -27,9 +27,9 @@ void seek(unsigned long key, struct seekRecord* s)
 	while(true)
 	{	
 		//initialize all variables use in traversal
-		freeParent = R; freeNode = S;
+		lastUParent = R; lastUNode = S;
 		prev = R; curr = S;
-		rightNode = R; rightKey = INF_R;
+		lastRNode = R; lastRKey = INF_R;
 		done = false;
 		
 		while(true)
@@ -47,8 +47,8 @@ void seek(unsigned long key, struct seekRecord* s)
 			n = isNull(temp); d = isDFlagSet(temp); p = isPFlagSet(temp); address = getAddress(temp);
 			if(n)
 			{
-				//reached a leaf node
-				if(getKey(rightNode->markAndKey) == rightKey)
+				//null flag set; reached a leaf node
+				if(getKey(lastRNode->markAndKey) == lastRKey)
 				{
 					//key stored in the node at which the last right edge was traversed has not changed
 					done = true;
@@ -59,18 +59,17 @@ void seek(unsigned long key, struct seekRecord* s)
 			if(which == RIGHT)
 			{
 				//the next edge that will be traversed is the right edge; keep track of the current node and its key
-				rightNode = curr;
-				rightKey = cKey;
+				lastRNode = curr;
+				lastRKey = cKey;
 			}
 			//traverse the next edge
-			prev = curr;
-			curr = address;
+			prev = curr; curr = address;
 			//determine if the most recent edge traversed is marked
 			if(!(d || p))
 			{
-				//keep trace of the two end points of the edge
-				freeParent = prev;
-				freeNode = curr;
+				//keep track of the two end points of the edge
+				lastUParent = prev;
+				lastUNode = curr;
 			}
 		}
 		if(done)
@@ -78,8 +77,8 @@ void seek(unsigned long key, struct seekRecord* s)
 			//initialize the seek record and return
 			s->node = curr;
 			s->parent = prev;
-			s->freeParent = freeParent;
-			s->freeNode = freeNode;
+			s->lastUParent = lastUParent;
+			s->lastUNode = lastUNode;
 			return;			
 		}
 	}
@@ -167,41 +166,40 @@ void findSmallest(struct node* node, struct node* right, struct seekRecord* s)
 {
 	struct node* prev;
 	struct node* curr;
-	struct node* freeParent;
-	struct node* freeNode;
-	struct node* address;
+	struct node* lastUParent;
+	struct node* lastUNode;
+	struct node* left;
 	struct node* temp;
 	bool n;
 	bool d;
 	bool p;
 	//find the node with the smallest key in the subtree rooted at the right child
 	//initialize the variables used in the traversal
-	freeParent = node; freeNode = right;
+	lastUParent = node; lastUNode = right;
 	prev = node; curr = right;
 	while(true)
 	{
 		temp = curr->child[LEFT];
-		n = isNull(temp); d = isDFlagSet(temp); p = isPFlagSet(temp); address = getAddress(temp);
+		n = isNull(temp); d = isDFlagSet(temp); p = isPFlagSet(temp); left = getAddress(temp);
 		if(n)
 		{
 			break;
 		}
 		//traverse the next edge
-		prev = curr;
-		curr = address;
+		prev = curr; curr = left;
 		//determine if the most recently traversed edge is marked
 		if(!(d || p))
 		{
 			//keep track of the two endpoints of the last unmarked edge
-			freeParent = prev;
-			freeNode = curr;
+			lastUParent = prev;
+			lastUNode = curr;
 		}		
 	}
 	//initialize seek record and return	
 	s->parent = prev;
 	s->node = curr;
-	s->freeParent = freeParent;
-	s->freeNode = freeNode;
+	s->lastUParent = lastUParent;
+	s->lastUNode = lastUNode;
 	return;
 }
 
@@ -213,6 +211,8 @@ void findAndMarkSuccessor(struct stateRecord* state)
 	struct node* right;
 	struct node* left;
 	struct node* temp;
+	struct node* lastUParent;
+	struct node* lastUNode;
 	bool n;
 	bool d;
 	bool p;
@@ -241,29 +241,36 @@ void findAndMarkSuccessor(struct stateRecord* state)
 		}
 		//retrieve the address from the seek record
 		succNode = s->node;
-		newM = isKeyMarked(node->markAndKey);
+		//obtain the information stored in the left edge
 		temp = succNode->child[LEFT];
 		n = isNull(temp); d = isDFlagSet(temp); p = isPFlagSet(temp); left = getAddress(temp);
+		//read the mark flag of the key under deletion
+		newM = isKeyMarked(node->markAndKey);
 		if(newM)
 		{
+			//successor node has already been selected
 			if(node->readyToReplace)
 			{
+				//the successor node has already been removed
 				break;
 			}
 			if(p)
 			{
 				if(left == node)
 				{
+					//a successor node has already been selected
 					break;
 				}
 				else
 				{
+					//the node found is a successor node for another delete operation
 					node->readyToReplace = true;
 					break;
 				}
 			}
 			if(oldM)
 			{
+				//the successor node has already been removed
 				node->readyToReplace = true;
 				break;
 			}
@@ -285,27 +292,34 @@ void findAndMarkSuccessor(struct stateRecord* state)
 		{
 			if(left == node)
 			{
+				//a successor node has already been selected
 				break;
 			}
 			else
 			{
+				//the node found is a successor node for another delete operation
 				node->readyToReplace = true;
 				break;
 			}
 		}
 		if(!n)
 		{
+			//the node found has since gained a left child
 			continue;
 		}
 		if(d)
 		{
-			if(s->freeParent == node)
+			//the node found is undergoing deletion; need to help
+			lastUParent = s->lastUParent;
+			lastUNode = s->lastUNode;
+			if(lastUParent == node)
 			{
-				shallowHelp(s->freeNode,s->freeParent);
+				//all edges from the node to its possible successor are marked
+				shallowHelp(lastUNode,lastUParent);
 			}
 			else
 			{
-				deepHelp(s->freeNode,s->freeParent);
+				deepHelp(lastUNode,lastUParent);
 			}
 		}
 	}
@@ -320,8 +334,8 @@ void removeSuccessor(struct stateRecord* state)
 	struct seekRecord* s;
 	struct node* succNode;
 	struct node* succParent;
-	struct node* freeParent;
-	struct node* freeNode;
+	struct node* lastUParent;
+	struct node* lastUNode;
 	struct node* address;
 	struct node* temp;
 	struct node* right;
@@ -337,8 +351,7 @@ void removeSuccessor(struct stateRecord* state)
 	//extract information about the successor node
 	succNode = s->node;
 	//mark the right edge if unmarked
-	temp = succNode->child[RIGHT];
-	p = isPFlagSet(temp); address = getAddress(temp);
+	p = isPFlagSet(succNode->child[RIGHT]);
 	if(!p)
 	{
 		//set the promote flag on the right edge
@@ -360,7 +373,7 @@ void removeSuccessor(struct stateRecord* state)
 			dFlag = false; which = LEFT;
 		}
 		struct node* temp = succNode->child[RIGHT];
-		n = isNull(temp); address = getAddress(temp);
+		n = isNull(temp); right = getAddress(temp);
 		if(n)
 		{
 			//only set the null flag; do not change the address
@@ -377,11 +390,11 @@ void removeSuccessor(struct stateRecord* state)
 		{
 			if(dFlag)
 			{
-				result = CAS(succParent,which,setDFlag(succNode),setDFlag(address));
+				result = CAS(succParent,which,setDFlag(succNode),setDFlag(right));
 			}
 			else
 			{
-				result = CAS(succParent,which,succNode,address);
+				result = CAS(succParent,which,succNode,right);
 			}
 		}
 		if(result || dFlag)
@@ -396,16 +409,18 @@ void removeSuccessor(struct stateRecord* state)
 		}
 		if(succParent == node)
 		{
+			//all edges in the path from the node to its successor are marked
 			shallowHelp(succNode,succParent);
 		}
 		else
 		{
 			//locate the edge among which to help
-			freeParent = s->freeParent;
-			freeNode = s->freeNode;
-			if(freeNode != succNode)
+			lastUParent = s->lastUParent;
+			lastUNode = s->lastUNode;
+			//help only if the helpee node is different from the successor
+			if(lastUNode != succNode)
 			{
-				deepHelp(freeNode,freeParent);
+				deepHelp(lastUNode,lastUParent);
 			}
 		}
 		temp = node->child[RIGHT];
@@ -432,6 +447,8 @@ bool cleanup(struct stateRecord* state, bool dFlag)
 	struct node* node;
 	struct node* parent;
 	struct node* newNode;
+	struct node* left;
+	struct node* right;
 	struct node* address;
 	struct node* temp;
 	unsigned long pKey;
@@ -442,7 +459,7 @@ bool cleanup(struct stateRecord* state, bool dFlag)
 	bool d;
 	bool p;
 	bool result;
-	//retrieve the address from the state record
+	//retrieve the addresses from the state record
 	node = state->node;
 	parent = state->parent;
 	//determine which edge of the parent needs to be switched
@@ -455,24 +472,17 @@ bool cleanup(struct stateRecord* state, bool dFlag)
 		newNode = (struct node*) malloc(sizeof(struct node));
 		newNode->markAndKey = nKey;
 		temp = node->child[LEFT];
-		n = isNull(temp); address = getAddress(temp);
-		if(n)
-		{
-			newNode->child[LEFT] = setNull(NULL);
-		}
-		else
-		{
-			newNode->child[LEFT] = address;
-		}
+		n = isNull(temp); left = getAddress(temp);
+		newNode->child[LEFT] = left;
 		temp = node->child[RIGHT];
-		n = isNull(temp); address = getAddress(temp);
+		n = isNull(temp); right = getAddress(temp);
 		if(n)
 		{
 			newNode->child[RIGHT] = setNull(NULL);
 		}
 		else
 		{
-			newNode->child[RIGHT] = address;
+			newNode->child[RIGHT] = right;
 		}
 		//try to switch the edge at the parent
 		if(dFlag)
@@ -528,7 +538,7 @@ bool cleanup(struct stateRecord* state, bool dFlag)
 	}
 	//check if some other process has already switched the edge at the parent
 	temp = parent->child[pWhich];
-	n = isNull(temp); d = isDFlagSet(temp); p = isPFlagSet(temp); address = getAddress(temp);
+	n = isNull(temp); address = getAddress(temp);
 	if(n || (address != node))
 	{
 		//some other process has already switched the edge

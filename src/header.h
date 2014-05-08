@@ -40,8 +40,8 @@ struct seekRecord
 {
 	struct node* node;
 	struct node* parent;
-	struct node* freeParent;
-	struct node* freeNode;
+	struct node* lastUParent;
+	struct node* lastUNode;
 };
 
 struct stateRecord
@@ -74,8 +74,8 @@ struct tArgs
 	unsigned long complexDeleteCount;
 	struct node* newNode;
 	bool isNewNodeAvailable;
-	struct seekRecord* mainSeekRecord;
-	struct stateRecord* state;
+	struct seekRecord* mySeekRecord;
+	struct stateRecord* myState;
 };
 
 void createHeadNodes();

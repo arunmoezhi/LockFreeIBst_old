@@ -101,8 +101,8 @@ int main(int argc, char *argv[])
   initialInsertArgs->successfulInserts=0;
 	initialInsertArgs->newNode=NULL;
   initialInsertArgs->isNewNodeAvailable=false;
-	initialInsertArgs->mainSeekRecord = (struct seekRecord*) malloc(sizeof(struct seekRecord));
-	initialInsertArgs->state = (struct stateRecord*) malloc(sizeof(struct stateRecord));
+	initialInsertArgs->mySeekRecord = (struct seekRecord*) malloc(sizeof(struct seekRecord));
+	initialInsertArgs->myState = (struct stateRecord*) malloc(sizeof(struct stateRecord));
 	
   while(initialInsertArgs->successfulInserts < keyRange/2) //populate the tree with 50% of keys
   {
@@ -131,9 +131,9 @@ int main(int argc, char *argv[])
     tArgs[i]->complexDeleteCount=0;
     tArgs[i]->newNode=NULL;
     tArgs[i]->isNewNodeAvailable=false;
-		tArgs[i]->mainSeekRecord = (struct seekRecord*) malloc(sizeof(struct seekRecord));
-		tArgs[i]->state = (struct stateRecord*) malloc(sizeof(struct stateRecord));
-		tArgs[i]->state->seekRecord = (struct seekRecord*) malloc(sizeof(struct seekRecord));
+		tArgs[i]->mySeekRecord = (struct seekRecord*) malloc(sizeof(struct seekRecord));
+		tArgs[i]->myState = (struct stateRecord*) malloc(sizeof(struct stateRecord));
+		tArgs[i]->myState->seekRecord = (struct seekRecord*) malloc(sizeof(struct seekRecord));
   }
 
   for(int i=0;i<NUM_OF_THREADS;i++)
