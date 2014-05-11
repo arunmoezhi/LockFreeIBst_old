@@ -18,10 +18,12 @@ static inline void BTS(struct node* array, int bit)
 static inline struct node* newLeafNode(unsigned long key)
 {
   struct node* node = (struct node*) malloc(sizeof(struct node));
+	assert((uintptr_t)node%8==0);
   node->markAndKey = key;
   node->child[LEFT] = setNull(NULL); 
   node->child[RIGHT] = setNull(NULL);
 	node->readyToReplace=false;
+	node->ownerId = -1;
   return(node);
 }
 
@@ -69,13 +71,13 @@ void printKeysInOrder(struct node* node)
     return;
   }
   printKeysInOrder(getAddress(node)->child[LEFT]);
-  printf("%10x\t%10lu\t%10x\t%10x\t%10d\n",node,getKey(getAddress(node)->markAndKey),(struct node*) getAddress(node)->child[LEFT],(struct node*) getAddress(node)->child[RIGHT],getAddress(node)->readyToReplace);
+  printf("%10x\t%10lu\t%10x\t%10x\t%10d\t%10d\n",node,getKey(getAddress(node)->markAndKey),(struct node*) getAddress(node)->child[LEFT],(struct node*) getAddress(node)->child[RIGHT],getAddress(node)->readyToReplace,getAddress(node)->ownerId);
   printKeysInOrder(getAddress(node)->child[RIGHT]);
 }
 
 void printKeys()
 {
-  printKeysInOrder(S);
+  printKeysInOrder(R);
   printf("\n");
 }
 

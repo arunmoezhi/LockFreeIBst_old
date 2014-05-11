@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
   {
     insert(initialInsertArgs,gsl_rng_get(r)%keyRange + 1);
   }
-
+	printKeys();
   pthread_t threadArray[NUM_OF_THREADS];
   for(int i=0;i<NUM_OF_THREADS;i++)
   {
@@ -134,6 +134,9 @@ int main(int argc, char *argv[])
 		tArgs[i]->mySeekRecord = (struct seekRecord*) malloc(sizeof(struct seekRecord));
 		tArgs[i]->myState = (struct stateRecord*) malloc(sizeof(struct stateRecord));
 		tArgs[i]->myState->seekRecord = (struct seekRecord*) malloc(sizeof(struct seekRecord));
+		#ifdef PRINT
+		tArgs[i]->bIdx = 0;
+		#endif
   }
 
   for(int i=0;i<NUM_OF_THREADS;i++)
@@ -145,6 +148,7 @@ int main(int argc, char *argv[])
   {
     pthread_join(threadArray[i], NULL);
   }
+	printKeys();
   for(int i=0;i<NUM_OF_THREADS;i++)
   {
     totalTime += timeArray[i];
@@ -185,6 +189,7 @@ int main(int argc, char *argv[])
     totalDeleteRetries += tArgs[i]->deleteRetries;
     totalSimpleDeleteCount += tArgs[i]->simpleDeleteCount;
     totalComplexDeleteCount += tArgs[i]->complexDeleteCount;
+		printf("%s",tArgs[i]->buffer);
   }
 	#ifdef DEBUG_ON
   printf("==========================================================================\n");
@@ -198,8 +203,8 @@ int main(int argc, char *argv[])
 	assert(isValidTree());
 	assert(totalReadCount==totalSuccessfulReads+totalUnsuccessfulReads);
 	assert(totalInsertCount==totalSuccessfulInserts+totalUnsuccessfulInserts);
-  assert(totalDeleteCount==totalSuccessfulDeletes+totalUnsuccessfulDeletes && (totalSuccessfulDeletes == totalSimpleDeleteCount + totalComplexDeleteCount));
-  assert(initialInsertArgs->successfulInserts + totalSuccessfulInserts - totalSuccessfulDeletes == size());
+  //assert(totalDeleteCount==totalSuccessfulDeletes+totalUnsuccessfulDeletes && (totalSuccessfulDeletes == totalSimpleDeleteCount + totalComplexDeleteCount));
+  //assert(initialInsertArgs->successfulInserts + totalSuccessfulInserts - totalSuccessfulDeletes == size());
   
 	pthread_exit(NULL);
 }

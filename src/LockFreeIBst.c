@@ -80,8 +80,16 @@ bool remove(struct tArgs* t, unsigned long key)
 	unsigned long nKey;
 	bool needToHelp;
 	bool result;
+	//initialize my seek record
+	mySeekRecord->node = NULL;
+	mySeekRecord->parent = NULL;
+	mySeekRecord->lastUParent = NULL;
+	mySeekRecord->lastUNode = NULL;
 	//initialize the state record
 	struct stateRecord* myState = t->myState;
+	myState->node = NULL;
+	myState->parent = NULL;
+	myState->type = SIMPLE;
 	myState->mode = INJECTION;
 	myState->key = key;
 	while(true)
@@ -99,6 +107,10 @@ bool remove(struct tArgs* t, unsigned long key)
 			}
 			else
 			{
+				#ifdef PRINT
+					snprintf(t->buffer+t->bIdx,sizeof(t->buffer)-t->bIdx,"t%d H %ld\n",t->tId,key);
+					t->bIdx +=7;
+				#endif
 				return(true);
 			}
 		}
@@ -114,6 +126,14 @@ bool remove(struct tArgs* t, unsigned long key)
 			{
 				needToHelp = true;
 			}
+			else
+			{
+				#ifdef PRINT
+					snprintf(t->buffer+t->bIdx,sizeof(t->buffer)-t->bIdx,"t%d I %ld\n",t->tId,key);
+					t->bIdx +=7;
+				#endif
+				myState->node->ownerId = t->tId;
+			}
 		}
 		//mode would have changed if the operation was injected successfully
 		if(myState->mode != INJECTION)
@@ -121,6 +141,10 @@ bool remove(struct tArgs* t, unsigned long key)
 			//if the node found by the seek function is different from the one stored in state record, then return
 			if(myState->node != node)
 			{
+				#ifdef PRINT
+					snprintf(t->buffer+t->bIdx,sizeof(t->buffer)-t->bIdx,"t%d H %ld\n",t->tId,key);
+					t->bIdx +=7;
+				#endif
 				return(true);
 			}
 			//update the parent information using the most recent seek
@@ -139,6 +163,10 @@ bool remove(struct tArgs* t, unsigned long key)
 			result = cleanup(myState,0);
 			if(result)
 			{
+				#ifdef PRINT
+					snprintf(t->buffer+t->bIdx,sizeof(t->buffer)-t->bIdx,"t%d D %ld\n",t->tId,key);
+					t->bIdx +=7;
+				#endif
 				return(true);
 			}
 			else

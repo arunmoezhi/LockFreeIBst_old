@@ -407,22 +407,18 @@ void removeSuccessor(struct stateRecord* state)
 		{
 			break;
 		}
-		if(succParent == node)
+		lastUParent = s->lastUParent;
+		lastUNode = s->lastUNode;
+		if(lastUParent == node)
 		{
 			//all edges in the path from the node to its successor are marked
-			shallowHelp(succNode,succParent);
+			shallowHelp(lastUNode,lastUParent);
 		}
-		else
+		else if(lastUNode != succNode)
 		{
-			//locate the edge among which to help
-			lastUParent = s->lastUParent;
-			lastUNode = s->lastUNode;
-			//help only if the helpee node is different from the successor
-			if(lastUNode != succNode)
-			{
-				deepHelp(lastUNode,lastUParent);
-			}
-		}
+			//last unmarked edge is not incident on the successor
+			deepHelp(lastUNode,lastUParent);
+		}		
 		temp = node->child[RIGHT];
 		n = isNull(temp); right = getAddress(temp);
 		if(n)
@@ -436,6 +432,7 @@ void removeSuccessor(struct stateRecord* state)
 			break;
 		}
 	}
+	node->readyToReplace = true;
 	if(!isNull(state->parent))
 	{
 		updateModeAndType(state);
@@ -463,14 +460,16 @@ bool cleanup(struct stateRecord* state, bool dFlag)
 	node = state->node;
 	parent = state->parent;
 	//determine which edge of the parent needs to be switched
-	pKey = parent->markAndKey;
-	nKey = node->markAndKey;
+	pKey = getKey(parent->markAndKey);
+	nKey = getKey(node->markAndKey);
 	pWhich = nKey<pKey ? LEFT:RIGHT;
 	if(state->type == COMPLEX)
 	{
 		//replace the node with a new copy in which all the fields are unmarked
 		newNode = (struct node*) malloc(sizeof(struct node));
+		assert((uintptr_t) newNode%8==0);
 		newNode->markAndKey = nKey;
+		newNode->readyToReplace = false;
 		temp = node->child[LEFT];
 		n = isNull(temp); left = getAddress(temp);
 		newNode->child[LEFT] = left;
@@ -484,6 +483,7 @@ bool cleanup(struct stateRecord* state, bool dFlag)
 		{
 			newNode->child[RIGHT] = right;
 		}
+		newNode->ownerId = -1;
 		//try to switch the edge at the parent
 		if(dFlag)
 		{

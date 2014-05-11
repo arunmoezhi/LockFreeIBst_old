@@ -10,7 +10,7 @@
 #include<gsl/gsl_randist.h>
 #include<assert.h>
 #define MAX_KEY 0x7FFFFFFF
-#define INF_R 0x7FFFFFFD
+#define INF_R 0x0
 #define INF_S 0x7FFFFFFE
 #define NULL_BIT 4
 #define DELETE_BIT 2
@@ -25,6 +25,7 @@
 #define LEFT 0
 #define RIGHT 1
 #define DEBUG_ON
+#define PRINT
 
 typedef enum {INJECTION, DISCOVERY, CLEANUP} Mode;
 typedef enum {SIMPLE, COMPLEX} Type;
@@ -34,6 +35,7 @@ struct node
 	unsigned long markAndKey;							//format <markFlag,address>
 	tbb::atomic<struct node*> child[K];		//format <address,NullBit,DeleteFlag,PromoteFlag>
 	bool readyToReplace;
+	int ownerId;
 };
 
 struct seekRecord
@@ -76,6 +78,10 @@ struct tArgs
 	bool isNewNodeAvailable;
 	struct seekRecord* mySeekRecord;
 	struct stateRecord* myState;
+	#ifdef PRINT
+	char buffer[1048576];
+	int bIdx;
+	#endif
 };
 
 void createHeadNodes();
