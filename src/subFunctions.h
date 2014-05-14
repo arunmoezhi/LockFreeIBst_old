@@ -1,14 +1,14 @@
-void seek(unsigned long, struct seekRecord*);
-void updateModeAndType(struct stateRecord*);
-bool inject(struct stateRecord*);
-void findSmallest(struct node*, struct node*, struct seekRecord*);
-void findAndMarkSuccessor(struct stateRecord*);
-void removeSuccessor(struct stateRecord*);
-bool cleanup(struct stateRecord*, bool);
-void shallowHelp(struct node*, struct node*);
-void deepHelp(struct node*, struct node*);
+void seek(struct tArgs*, unsigned long, struct seekRecord*);
+void updateModeAndType(struct tArgs*, struct stateRecord*);
+bool inject(struct tArgs*, struct stateRecord*);
+void findSmallest(struct tArgs*, struct node*, struct node*, struct seekRecord*);
+void findAndMarkSuccessor(struct tArgs*, struct stateRecord*);
+void removeSuccessor(struct tArgs*, struct stateRecord*);
+bool cleanup(struct tArgs*, struct stateRecord*, bool);
+void shallowHelp(struct tArgs*, struct node*, struct node*);
+void deepHelp(struct tArgs*, struct node*, struct node*);
 
-void seek(unsigned long key, struct seekRecord* s)
+void seek(struct tArgs* t,unsigned long key, struct seekRecord* s)
 {
 	struct node* prev;
 	struct node* curr;
@@ -84,7 +84,7 @@ void seek(unsigned long key, struct seekRecord* s)
 	}
 }
 
-void updateModeAndType(struct stateRecord* state)
+void updateModeAndType(struct tArgs* t,struct stateRecord* state)
 {
 	struct node* node;
 	bool m;
@@ -92,11 +92,21 @@ void updateModeAndType(struct stateRecord* state)
 	bool rN;
 	//retrieve the address from the state record
 	node = state->node;
+	#ifdef PRINT
+		if(!isDFlagSet(node->child[LEFT]))
+		{
+			printf("%x %ld %x %x %d %d %d %ld\n",node,node->markAndKey,(struct node*)node->child[0],(struct node*)node->child[1],node->ownerId,state->mode,state->type,state->key);
+			assert(false);
+		}
+	#endif
 	//mark the right edge if unmarked
 	if(!isDFlagSet(node->child[RIGHT]))
 	{
 		BTS((struct node*) &(node->child[RIGHT]), BTS_D_FLAG);
 	}
+	#ifdef PRINT
+		assert(isDFlagSet(node->child[RIGHT]));	
+	#endif
 	//update the operation mode and type
 	m = isKeyMarked(node->markAndKey);
 	lN = isNull(node->child[LEFT]);
@@ -129,7 +139,7 @@ void updateModeAndType(struct stateRecord* state)
 	return;
 }
 
-bool inject(struct stateRecord* state)
+bool inject(struct tArgs* t,struct stateRecord* state)
 {
 	struct node* node;
 	struct node* addressWithNBit;
@@ -153,16 +163,32 @@ bool inject(struct stateRecord* state)
 		result = CAS(node,LEFT,addressWithNBit,addressWithDFlagSet);
 		if(result)
 		{
+			#ifdef PRINT
+				if(!isDFlagSet(node->child[LEFT]))
+				{
+					printf("%x %x %x %x\n",node,addressWithNBit,addressWithDFlagSet,(struct node*)node->child[LEFT]);
+					assert(false);
+				}
+				if(!isDFlagSet(state->node->child[LEFT]))
+				{
+					printf("%x %x %x %x\n",node,addressWithNBit,addressWithDFlagSet,(struct node*)node->child[LEFT]);
+					assert(false);
+				}
+			#endif
 			break;
 		}
 		//retry from the beginning of the while loop
 	}
 	//mark the right edge; update the operation mode and type
-	updateModeAndType(state);
+	updateModeAndType(t,state);
+	#ifdef PRINT
+		snprintf(t->buffer+t->bIdx,sizeof(t->buffer)-t->bIdx,"t%d I %ld ",t->tId,state->key);
+		t->bIdx +=7;
+	#endif
 	return(true);	
 }
 
-void findSmallest(struct node* node, struct node* right, struct seekRecord* s)
+void findSmallest(struct tArgs* t,struct node* node, struct node* right, struct seekRecord* s)
 {
 	struct node* prev;
 	struct node* curr;
@@ -203,7 +229,7 @@ void findSmallest(struct node* node, struct node* right, struct seekRecord* s)
 	return;
 }
 
-void findAndMarkSuccessor(struct stateRecord* state)
+void findAndMarkSuccessor(struct tArgs* t, struct stateRecord* state)
 {
 	struct node* node;
 	struct seekRecord* s;
@@ -233,7 +259,7 @@ void findAndMarkSuccessor(struct stateRecord* state)
 		}
 		oldM = isKeyMarked(node->markAndKey);
 		//find the node with the smallest key in the right subtree
-		findSmallest(node,right,s);
+		findSmallest(t,node,right,s);
 		if(getAddress(node->child[RIGHT]) != right)
 		{
 			//the root node of the right subtree has changed
@@ -315,20 +341,20 @@ void findAndMarkSuccessor(struct stateRecord* state)
 			if(lastUParent == node)
 			{
 				//all edges from the node to its possible successor are marked
-				shallowHelp(lastUNode,lastUParent);
+				shallowHelp(t,lastUNode,lastUParent);
 			}
 			else
 			{
-				deepHelp(lastUNode,lastUParent);
+				deepHelp(t,lastUNode,lastUParent);
 			}
 		}
 	}
 	//update the operation mode and type
-	updateModeAndType(state);
+	updateModeAndType(t,state);
 	return;
 }
 
-void removeSuccessor(struct stateRecord* state)
+void removeSuccessor(struct tArgs* t, struct stateRecord* state)
 {
 	struct node* node;
 	struct seekRecord* s;
@@ -412,12 +438,12 @@ void removeSuccessor(struct stateRecord* state)
 		if(lastUParent == node)
 		{
 			//all edges in the path from the node to its successor are marked
-			shallowHelp(lastUNode,lastUParent);
+			shallowHelp(t,lastUNode,lastUParent);
 		}
 		else if(lastUNode != succNode)
 		{
 			//last unmarked edge is not incident on the successor
-			deepHelp(lastUNode,lastUParent);
+			deepHelp(t,lastUNode,lastUParent);
 		}		
 		temp = node->child[RIGHT];
 		n = isNull(temp); right = getAddress(temp);
@@ -425,7 +451,7 @@ void removeSuccessor(struct stateRecord* state)
 		{
 			break;
 		}
-		findSmallest(node,right,s);
+		findSmallest(t,node,right,s);
 		if(s->node != succNode)
 		{
 			//the successor node has already been deleted
@@ -435,11 +461,11 @@ void removeSuccessor(struct stateRecord* state)
 	node->readyToReplace = true;
 	if(!isNull(state->parent))
 	{
-		updateModeAndType(state);
+		updateModeAndType(t,state);
 	}
 }
 
-bool cleanup(struct stateRecord* state, bool dFlag)
+bool cleanup(struct tArgs* t, struct stateRecord* state, bool dFlag)
 {
 	struct node* node;
 	struct node* parent;
@@ -470,8 +496,7 @@ bool cleanup(struct stateRecord* state, bool dFlag)
 		assert((uintptr_t) newNode%8==0);
 		newNode->markAndKey = nKey;
 		newNode->readyToReplace = false;
-		temp = node->child[LEFT];
-		n = isNull(temp); left = getAddress(temp);
+		left = getAddress(node->child[LEFT]);
 		newNode->child[LEFT] = left;
 		temp = node->child[RIGHT];
 		n = isNull(temp); right = getAddress(temp);
@@ -488,10 +513,24 @@ bool cleanup(struct stateRecord* state, bool dFlag)
 		if(dFlag)
 		{
 			result = CAS(parent,pWhich,setDFlag(node),setDFlag(newNode));
+			if(result)
+			{
+				#ifdef PRINT
+					snprintf(t->buffer+t->bIdx,sizeof(t->buffer)-t->bIdx,"t%d C0 %ld %x %d %x %x\n",t->tId,state->key,parent,pWhich,setDFlag(node),setDFlag(newNode));
+					t->bIdx +=37;
+				#endif
+			}
 		}
 		else
 		{
 			result = CAS(parent,pWhich,node,newNode);
+			if(result)
+			{
+				#ifdef PRINT
+					snprintf(t->buffer+t->bIdx,sizeof(t->buffer)-t->bIdx,"t%d C1 %ld %x %d %x %x\n",t->tId,state->key,parent,pWhich,node,newNode);
+					t->bIdx +=37;
+				#endif
+			}
 		}	
 	}
 	else
@@ -514,10 +553,24 @@ bool cleanup(struct stateRecord* state, bool dFlag)
 			if(dFlag)
 			{
 				result = CAS(parent,pWhich,setDFlag(node),setNull(setDFlag(node)));
+				if(result)
+				{
+					#ifdef PRINT
+						snprintf(t->buffer+t->bIdx,sizeof(t->buffer)-t->bIdx,"t%d C2 %ld %x %d %x %x\n",t->tId,state->key,parent,pWhich,setDFlag(node),setNull(setDFlag(node)));
+						t->bIdx +=37;
+					#endif
+				}
 			}
 			else
 			{
 				result = CAS(parent,pWhich,node,setNull(node));
+				if(result)
+				{
+					#ifdef PRINT
+						snprintf(t->buffer+t->bIdx,sizeof(t->buffer)-t->bIdx,"t%d C3 %ld %x %d %x %x\n",t->tId,state->key,parent,pWhich,node,setNull(node));
+						t->bIdx +=37;
+					#endif
+				}
 			}			
 		}
 		else
@@ -525,10 +578,24 @@ bool cleanup(struct stateRecord* state, bool dFlag)
 			if(dFlag)
 			{
 				result = CAS(parent,pWhich,setDFlag(node),setDFlag(address));
+				if(result)
+				{
+					#ifdef PRINT
+						snprintf(t->buffer+t->bIdx,sizeof(t->buffer)-t->bIdx,"t%d C4 %ld %x %d %x %x\n",t->tId,state->key,parent,pWhich,setDFlag(node),setDFlag(address));
+						t->bIdx +=37;
+					#endif
+				}
 			}
 			else
 			{
 				result = CAS(parent,pWhich,node,address);
+				if(result)
+				{
+					#ifdef PRINT
+						snprintf(t->buffer+t->bIdx,sizeof(t->buffer)-t->bIdx,"t%d C5 %ld %x %d %x %x\n",t->tId,state->key,parent,pWhich,node,address);
+						t->bIdx +=37;
+					#endif
+				}
 			}
 		}
 	}
@@ -541,6 +608,10 @@ bool cleanup(struct stateRecord* state, bool dFlag)
 	n = isNull(temp); address = getAddress(temp);
 	if(n || (address != node))
 	{
+		#ifdef PRINT
+			snprintf(t->buffer+t->bIdx,sizeof(t->buffer)-t->bIdx,"t%d C6 %ld\n",t->tId,state->key);
+			t->bIdx +=8;
+		#endif
 		//some other process has already switched the edge
 		return(true);
 	}
@@ -550,7 +621,7 @@ bool cleanup(struct stateRecord* state, bool dFlag)
 	}
 }
 
-void shallowHelp(struct node* node, struct node* parent)
+void shallowHelp(struct tArgs* t, struct node* node, struct node* parent)
 {
 	struct stateRecord* state;
 	//obtain new state record and initialize it
@@ -558,20 +629,20 @@ void shallowHelp(struct node* node, struct node* parent)
 	state->node = node;
 	state->parent = parent;
 	//mark the right edge if unmarked; also update the operation mode and type
-	updateModeAndType(state);
+	updateModeAndType(t,state);
 	//if the operation mode is cleanup
 	if(state->mode == CLEANUP)
 	{
-		cleanup(state,1);
+		cleanup(t,state,1);
 	}
 	else
 	{
-		deepHelp(node,parent);
+		deepHelp(t,node,parent);
 	}
 	return;
 }
 
-void deepHelp(struct node* node, struct node* parent)
+void deepHelp(struct tArgs* t,struct node* node, struct node* parent)
 {
 	return;
 }

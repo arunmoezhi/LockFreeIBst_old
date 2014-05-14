@@ -8,6 +8,7 @@
 #include<tbb/atomic.h>
 #include<gsl/gsl_rng.h>
 #include<gsl/gsl_randist.h>
+#include "/people/cs/a/axr108820/atomicops/atomic_ops/include/atomic_ops.h"
 #include<assert.h>
 #define MAX_KEY 0x7FFFFFFF
 #define INF_R 0x0
@@ -79,13 +80,14 @@ struct tArgs
 	struct seekRecord* mySeekRecord;
 	struct stateRecord* myState;
 	#ifdef PRINT
-	char buffer[1048576];
+	char buffer[2097152];
 	int bIdx;
 	#endif
 };
 
 void createHeadNodes();
 bool search(struct tArgs*, unsigned long);
+bool insert0(struct tArgs*, unsigned long);
 bool insert(struct tArgs*, unsigned long);
 bool remove(struct tArgs*, unsigned long);
 unsigned long size();

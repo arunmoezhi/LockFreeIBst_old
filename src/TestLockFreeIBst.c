@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 	
   while(initialInsertArgs->successfulInserts < keyRange/2) //populate the tree with 50% of keys
   {
-    insert(initialInsertArgs,gsl_rng_get(r)%keyRange + 1);
+    insert0(initialInsertArgs,gsl_rng_get(r)%keyRange + 1);
   }
 	printKeys();
   pthread_t threadArray[NUM_OF_THREADS];

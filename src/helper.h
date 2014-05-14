@@ -7,6 +7,8 @@ unsigned long numOfNodes;
 static inline bool CAS(struct node* parent, int which, struct node* oldChild, struct node* newChild)
 {
 	return(parent->child[which].compare_and_swap(newChild,oldChild) == oldChild);
+	//struct node* addr = parent->child[which];
+	//return(__sync_bool_compare_and_swap(&addr,oldChild,newChild));
 }
 
 static inline void BTS(struct node* array, int bit)
