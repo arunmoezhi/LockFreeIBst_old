@@ -26,6 +26,7 @@
 #define LEFT 0
 #define RIGHT 1
 #define DEBUG_ON
+//#define ENABLE_ASSERT
 #define PRINT
 
 typedef enum {INJECTION, DISCOVERY, CLEANUP} Mode;
@@ -37,6 +38,7 @@ struct node
 	tbb::atomic<struct node*> child[K];		//format <address,NullBit,DeleteFlag,PromoteFlag>
 	bool readyToReplace;
 	int ownerId;
+	unsigned long oldKey;
 };
 
 struct seekRecord
@@ -45,6 +47,7 @@ struct seekRecord
 	struct node* parent;
 	struct node* lastUParent;
 	struct node* lastUNode;
+	int pWhich;
 };
 
 struct stateRecord
@@ -80,8 +83,9 @@ struct tArgs
 	struct seekRecord* mySeekRecord;
 	struct stateRecord* myState;
 	#ifdef PRINT
-	char buffer[2097152];
+	char buffer[268435456];
 	int bIdx;
+	FILE *fp;
 	#endif
 };
 

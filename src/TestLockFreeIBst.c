@@ -110,6 +110,7 @@ int main(int argc, char *argv[])
   }
 	printKeys();
   pthread_t threadArray[NUM_OF_THREADS];
+	//char fileName[1];
   for(int i=0;i<NUM_OF_THREADS;i++)
   {
     tArgs[i] = (struct tArgs*) malloc(sizeof(struct tArgs));
@@ -135,7 +136,10 @@ int main(int argc, char *argv[])
 		tArgs[i]->myState = (struct stateRecord*) malloc(sizeof(struct stateRecord));
 		tArgs[i]->myState->seekRecord = (struct seekRecord*) malloc(sizeof(struct seekRecord));
 		#ifdef PRINT
+		//printf("t=%x\n",tArgs[i]);
 		tArgs[i]->bIdx = 0;
+		//sprintf(fileName,"%d",i);
+		//tArgs[i]->fp = fopen(fileName,"w");
 		#endif
   }
 
@@ -189,7 +193,9 @@ int main(int argc, char *argv[])
     totalDeleteRetries += tArgs[i]->deleteRetries;
     totalSimpleDeleteCount += tArgs[i]->simpleDeleteCount;
     totalComplexDeleteCount += tArgs[i]->complexDeleteCount;
+		#ifdef PRINT
 		printf("%s",tArgs[i]->buffer);
+		#endif
   }
 	#ifdef DEBUG_ON
   printf("==========================================================================\n");

@@ -99,8 +99,22 @@ bool insert(struct tArgs* t, unsigned long key)
 		}
 		newNode = t->newNode;
 		newNode->markAndKey = key;
+		newNode->oldKey = key;
 		which = key<nKey ? LEFT:RIGHT;
+		#ifdef ENABLE_ASSERT1
+			if(which == LEFT)
+			{
+				assert(key<node->oldKey);
+			}
+			else if(which == RIGHT)
+			{
+				assert(key>node->oldKey);
+			}
+		#endif
 		address = getAddress(node->child[which]);
+		#ifdef ENABLE_ASSERT
+			assert(newNode->child[0] == setNull(NULL) && newNode->child[1] == setNull(NULL));
+		#endif
 		result = CAS(node,which,setNull(address),newNode);
 		if(result)
 		{
@@ -162,8 +176,8 @@ bool remove(struct tArgs* t, unsigned long key)
 			else
 			{
 				#ifdef PRINT
-					snprintf(t->buffer+t->bIdx,sizeof(t->buffer)-t->bIdx,"t%d H %ld ",t->tId,key);
-					t->bIdx +=7;
+					snprintf(t->buffer+t->bIdx,sizeof(t->buffer)-t->bIdx,"t%d H1 %ld ",t->tId,key);
+					t->bIdx +=8;
 				#endif
 				return(true);
 			}
@@ -180,10 +194,6 @@ bool remove(struct tArgs* t, unsigned long key)
 			{
 				needToHelp = true;
 			}
-			else
-			{
-				myState->node->ownerId = t->tId;
-			}
 		}
 		//mode would have changed if the operation was injected successfully
 		if(myState->mode != INJECTION)
@@ -192,8 +202,8 @@ bool remove(struct tArgs* t, unsigned long key)
 			if(myState->node != node)
 			{
 				#ifdef PRINT
-					snprintf(t->buffer+t->bIdx,sizeof(t->buffer)-t->bIdx,"t%d H %ld ",t->tId,key);
-					t->bIdx +=7;
+					snprintf(t->buffer+t->bIdx,sizeof(t->buffer)-t->bIdx,"t%d H2 %ld ",t->tId,key);
+					t->bIdx +=8;
 				#endif
 				return(true);
 			}
