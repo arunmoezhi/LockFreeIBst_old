@@ -8,7 +8,6 @@
 #include<tbb/atomic.h>
 #include<gsl/gsl_rng.h>
 #include<gsl/gsl_randist.h>
-#include "/people/cs/a/axr108820/atomicops/atomic_ops/include/atomic_ops.h"
 #include<assert.h>
 #define MAX_KEY 0x7FFFFFFF
 #define INF_R 0x0
@@ -25,9 +24,9 @@
 #define K 2
 #define LEFT 0
 #define RIGHT 1
-#define DEBUG_ON
+//#define DEBUG_ON
 //#define ENABLE_ASSERT
-#define PRINT
+//#define PRINT
 
 typedef enum {INJECTION, DISCOVERY, CLEANUP} Mode;
 typedef enum {SIMPLE, COMPLEX} Type;
@@ -36,18 +35,18 @@ struct node
 {
 	unsigned long markAndKey;							//format <markFlag,address>
 	tbb::atomic<struct node*> child[K];		//format <address,NullBit,DeleteFlag,PromoteFlag>
-	bool readyToReplace;
-	int ownerId;
-	unsigned long oldKey;
+	unsigned long readyToReplace;
 };
 
 struct seekRecord
 {
 	struct node* node;
 	struct node* parent;
+	struct node* injectionPoint;
 	struct node* lastUParent;
 	struct node* lastUNode;
 	int pWhich;
+	unsigned long pad[2];
 };
 
 struct stateRecord
@@ -58,6 +57,7 @@ struct stateRecord
 	Mode mode;
 	Type type;
 	struct seekRecord* seekRecord;
+	unsigned long pad[3];
 };
 
 struct tArgs
@@ -81,12 +81,8 @@ struct tArgs
 	struct node* newNode;
 	bool isNewNodeAvailable;
 	struct seekRecord* mySeekRecord;
-	struct stateRecord* myState;
-	#ifdef PRINT
-	char buffer[268435456];
-	int bIdx;
-	FILE *fp;
-	#endif
+	struct stateRecord* myState;	
+	unsigned long pad[12];
 };
 
 void createHeadNodes();

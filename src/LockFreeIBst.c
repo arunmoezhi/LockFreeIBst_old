@@ -7,8 +7,7 @@ bool search(struct tArgs* t, unsigned long key)
 	struct node* node;
 	unsigned long nKey;
 	
-	seek(t,key,t->mySeekRecord);
-	node = t->mySeekRecord->node;
+	node = seekForSearch(t,key);
 	nKey = getKey(node->markAndKey);
 	if(nKey == key)
 	{
@@ -35,7 +34,7 @@ bool insert0(struct tArgs* t, unsigned long key)
 	
 	while(true)
 	{
-		seek(t,key,t->mySeekRecord);
+		seekForInsert(t,key,t->mySeekRecord);
 		node = t->mySeekRecord->node;
 		nKey = getKey(node->markAndKey);
 		if(nKey == key)
@@ -83,7 +82,7 @@ bool insert(struct tArgs* t, unsigned long key)
 	
 	while(true)
 	{
-		seek(t,key,t->mySeekRecord);
+		seekForInsert(t,key,t->mySeekRecord);
 		node = t->mySeekRecord->node;
 		nKey = getKey(node->markAndKey);
 		if(nKey == key)
@@ -99,35 +98,17 @@ bool insert(struct tArgs* t, unsigned long key)
 		}
 		newNode = t->newNode;
 		newNode->markAndKey = key;
-		newNode->oldKey = key;
 		which = key<nKey ? LEFT:RIGHT;
-		#ifdef ENABLE_ASSERT1
-			if(which == LEFT)
-			{
-				assert(key<node->oldKey);
-			}
-			else if(which == RIGHT)
-			{
-				assert(key>node->oldKey);
-			}
-		#endif
-		address = getAddress(node->child[which]);
-		#ifdef ENABLE_ASSERT
-			assert(newNode->child[0] == setNull(NULL) && newNode->child[1] == setNull(NULL));
-		#endif
+		//address = getAddress(node->child[which]);
+		address = t->mySeekRecord->injectionPoint;
 		result = CAS(node,which,setNull(address),newNode);
 		if(result)
 		{
-			#ifdef PRINT
-				//size_t needed = snprintf(NULL,0,"t%d A %ld %8x %d %8x %8x\n",t->tId,key,node,which,setNull(address),newNode);
-				//printf("size=%d\n",needed);
-				snprintf(t->buffer+t->bIdx,sizeof(t->buffer)-t->bIdx,"t%d A %ld %8x %d %8x %8x\n",t->tId,key,node,which,setNull(address),newNode);
-				t->bIdx +=36;
-			#endif
 			t->isNewNodeAvailable = false;
 			t->successfulInserts++;
 			return(true);
 		}
+		t->insertRetries++;
 		struct node* temp = node->child[which];
 		d = isDFlagSet(temp); p = isPFlagSet(temp); address = getAddress(temp);
 		if(!(d || p))
@@ -162,7 +143,7 @@ bool remove(struct tArgs* t, unsigned long key)
 	myState->key = key;
 	while(true)
 	{
-		seek(t,myState->key,mySeekRecord);
+		seekForDelete(t,myState->key,mySeekRecord);
 		node = mySeekRecord->node;
 		parent = mySeekRecord->parent;
 		nKey = getKey(node->markAndKey);
@@ -171,14 +152,12 @@ bool remove(struct tArgs* t, unsigned long key)
 			//the key does not exist in the tree
 			if(myState->mode == INJECTION)
 			{
+				t->unsuccessfulDeletes++;
 				return(false);
 			}
 			else
 			{
-				#ifdef PRINT
-					snprintf(t->buffer+t->bIdx,sizeof(t->buffer)-t->bIdx,"t%d H1 %ld ",t->tId,key);
-					t->bIdx +=8;
-				#endif
+				t->successfulDeletes++;
 				return(true);
 			}
 		}
@@ -202,9 +181,9 @@ bool remove(struct tArgs* t, unsigned long key)
 			if(myState->node != node)
 			{
 				#ifdef PRINT
-					snprintf(t->buffer+t->bIdx,sizeof(t->buffer)-t->bIdx,"t%d H2 %ld ",t->tId,key);
-					t->bIdx +=8;
+					t->bIdx +=snprintf(t->buffer+t->bIdx,sizeof(t->buffer)-t->bIdx,"t%d H2 %ld ",t->tId,key);
 				#endif
+				t->successfulDeletes++;
 				return(true);
 			}
 			//update the parent information using the most recent seek
@@ -217,16 +196,13 @@ bool remove(struct tArgs* t, unsigned long key)
 		if(myState->mode == DISCOVERY)
 		{
 			removeSuccessor(t,myState);
-			#ifdef PRINT
-				snprintf(t->buffer+t->bIdx,sizeof(t->buffer)-t->bIdx,"t%d R %ld ",t->tId,key);
-				t->bIdx +=7;
-			#endif
 		}
 		if(myState->mode == CLEANUP)
 		{
 			result = cleanup(t,myState,0);
 			if(result)
 			{
+				t->successfulDeletes++;
 				return(true);
 			}
 			else
@@ -246,5 +222,6 @@ bool remove(struct tArgs* t, unsigned long key)
 			lastUParent = mySeekRecord->lastUParent;
 			deepHelp(t,lastUNode,lastUParent);
 		}
+		t->deleteRetries++;
 	}
 }

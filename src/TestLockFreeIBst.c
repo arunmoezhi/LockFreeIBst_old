@@ -24,6 +24,7 @@ struct timespec diff(timespec start, timespec end) //get difference in time in n
 	}
 	return temp;
 }
+
 void *operateOnTree(void* tArgs)
 {
   struct timespec s,e;
@@ -44,7 +45,8 @@ void *operateOnTree(void* tArgs)
   }
 
   clock_gettime(CLOCK_REALTIME,&s);
-  for(int i=0;i< (int)iterations;i++)
+
+	for(int i=0;i< (int) iterations;i++)
   {
     chooseOperation = gsl_rng_uniform(r)*100;
 		unsigned long key = gsl_rng_get(r)%keyRange + 1;
@@ -108,9 +110,7 @@ int main(int argc, char *argv[])
   {
     insert0(initialInsertArgs,gsl_rng_get(r)%keyRange + 1);
   }
-	printKeys();
   pthread_t threadArray[NUM_OF_THREADS];
-	//char fileName[1];
   for(int i=0;i<NUM_OF_THREADS;i++)
   {
     tArgs[i] = (struct tArgs*) malloc(sizeof(struct tArgs));
@@ -135,24 +135,18 @@ int main(int argc, char *argv[])
 		tArgs[i]->mySeekRecord = (struct seekRecord*) malloc(sizeof(struct seekRecord));
 		tArgs[i]->myState = (struct stateRecord*) malloc(sizeof(struct stateRecord));
 		tArgs[i]->myState->seekRecord = (struct seekRecord*) malloc(sizeof(struct seekRecord));
-		#ifdef PRINT
-		//printf("t=%x\n",tArgs[i]);
-		tArgs[i]->bIdx = 0;
-		//sprintf(fileName,"%d",i);
-		//tArgs[i]->fp = fopen(fileName,"w");
-		#endif
   }
 
-  for(int i=0;i<NUM_OF_THREADS;i++)
-  {
-    pthread_create(&threadArray[i], NULL, operateOnTree, (void*) tArgs[i] );
-  }
-  start=true; //start operations
-  for(int i=0;i<NUM_OF_THREADS;i++)
-  {
-    pthread_join(threadArray[i], NULL);
-  }
-	printKeys();
+	for(int i=0;i<NUM_OF_THREADS;i++)
+	{
+		pthread_create(&threadArray[i], NULL, operateOnTree, (void*) tArgs[i] );
+	}
+	start=true; //start operations
+	for(int i=0;i<NUM_OF_THREADS;i++)
+	{
+		pthread_join(threadArray[i], NULL);
+	}	
+	
   for(int i=0;i<NUM_OF_THREADS;i++)
   {
     totalTime += timeArray[i];
@@ -209,6 +203,7 @@ int main(int argc, char *argv[])
 	assert(isValidTree());
 	assert(totalReadCount==totalSuccessfulReads+totalUnsuccessfulReads);
 	assert(totalInsertCount==totalSuccessfulInserts+totalUnsuccessfulInserts);
+  assert(totalDeleteCount==totalSuccessfulDeletes+totalUnsuccessfulDeletes);
   //assert(totalDeleteCount==totalSuccessfulDeletes+totalUnsuccessfulDeletes && (totalSuccessfulDeletes == totalSimpleDeleteCount + totalComplexDeleteCount));
   //assert(initialInsertArgs->successfulInserts + totalSuccessfulInserts - totalSuccessfulDeletes == size());
   

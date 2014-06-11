@@ -43,10 +43,14 @@ static inline unsigned long setReplaceFlagInKey(unsigned long key)
 	return (key | KEY_MASK);
 }
 
+
 static inline unsigned long getKey(unsigned long key)
 {
 	return (key & MAX_KEY);
 }
+
+//#define getKey(key) (key & MAX_KEY)
+//#define getAddress(p) ((struct node*)((uintptr_t) p & ~((uintptr_t) ADDRESS_MASK)))
 
 static inline struct node* getAddress(struct node* p)
 {
