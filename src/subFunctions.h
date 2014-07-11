@@ -813,7 +813,57 @@ void shallowHelp(struct tArgs* t, struct node* node, struct node* parent)
 	return;
 }
 
+void deepHelp1(struct tArgs* t,struct node* node, struct node* parent)
+{
+	return;
+}
 void deepHelp(struct tArgs* t,struct node* node, struct node* parent)
 {
+	struct node* left;
+	struct node* temp;
+	bool d;
+	bool p;
+	struct stateRecord* state;
+	
+	temp = node->child[LEFT];
+	d = isDFlagSet(temp); p = isPFlagSet(temp); left = getAddress(temp);
+	state = (struct stateRecord*) malloc(sizeof(struct stateRecord));
+	state->seekRecord = (struct seekRecord*) malloc(sizeof(struct seekRecord));
+	if(d)
+	{
+		//the key in the node is being deleted
+		//obtain new state record and initialize it
+		state->node = node;
+		state->parent = parent;	
+		//mark the right edge if unmarked; update the operation mode and type
+		updateModeAndType(t,state);
+		if(state->mode == DISCOVERY)
+		{
+			findAndMarkSuccessor(t,state);
+		}
+		if(state->mode == DISCOVERY)
+		{
+			removeSuccessor(t,state);
+		}
+		if(state->mode == CLEANUP)
+		{
+			cleanup(t,state,0);
+		}
+	}
+	else
+	{
+		//the key in the node is being promoted
+		//obtain new state record and initialize it
+		state->node = left;
+		state->parent = NULL;
+		// initialize the seek record in the state record
+		state->seekRecord = (struct seekRecord*) malloc(sizeof(struct seekRecord));
+		state->seekRecord->node = node;
+		state->seekRecord->parent = parent;
+		state->seekRecord->lastUNode = node;
+		state->seekRecord->lastUParent = parent;
+		//mark the right edge if unmarked; remove the successor node
+		removeSuccessor(t,state);		
+	}
 	return;
 }
