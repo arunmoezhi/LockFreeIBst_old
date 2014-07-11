@@ -813,10 +813,6 @@ void shallowHelp(struct tArgs* t, struct node* node, struct node* parent)
 	return;
 }
 
-void deepHelp1(struct tArgs* t,struct node* node, struct node* parent)
-{
-	return;
-}
 void deepHelp(struct tArgs* t,struct node* node, struct node* parent)
 {
 	struct node* left;
