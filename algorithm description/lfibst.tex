@@ -1,0 +1,54 @@
+\documentclass{llncs}
+
+\usepackage{llncsdoc}
+\usepackage{multirow}
+\usepackage{verbatim}
+
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.10}
+\usetikzlibrary{shapes.geometric,arrows,fit,matrix,positioning,pgfplots.groupplots}
+\usepackage{circuitikz}
+\usepackage{comment}
+
+
+%macros
+\newcommand{\node}{node}
+\newcommand{\readyToReplace}{readyToReplace}
+\newcommand{\markAndKey}{markAndKey}
+\newcommand{\child}{child}
+\newcommand{\deleteFlag}{deleteFlag}
+\newcommand{\promoteFlag}{promoteFlag}
+\newcommand{\nullFlag}{nullFlag}
+\newcommand{\anchorNode}{anchorNode}
+
+\begin{document}
+\title{On Concurrent Lock-Free Binary Search Trees}
+
+\author{Arunmoezhi Ramachandran, Neeraj Mittal}
+
+\institute{Department of Computer Science, The University of Texas at Dallas, Richardson, Texas 75080, USA \\ \email{(arunmoezhi,neerajm)@utdallas.edu}}
+
+\maketitle
+
+\input{abstract}
+
+\keywords
+Concurrent Data Structure, Lock-Free Algorithm, Binary Search Tree
+
+\input{introduction}
+
+\input{model}
+
+\input{algorithm}
+
+\input{pseudocode}
+
+\input{experiments}
+
+\input{discussion}
+
+\bibliographystyle{splncs03}
+\bibliography{Bibliography/citations}
+
+\end{document}

@@ -1,0 +1,37 @@
+\node (a)[treenode, fill=black!20] 	at (-6,0)       {$X$ \\ 50};
+\node (b)[subtree] 									at (-7.5,-1)  	{\Large $\alpha$};
+\node (c)[treenode] 								at (-4,-1.5) 		{$Y0$ \\ 100};
+\node (d)[treenode]									at (-5.5,-3)		{$Y1$ \\ 60}; 
+\node (e)[subtree] 									at (-3,-2.5)    {\Large $\beta$};
+\node (f)[treenode]									at (-7,-4.5)		{$Y2$ \\ 55}; 
+\node (g)[subtree] 									at (-4,-4)   		{\Large $\gamma$};
+\node (h)[ground] 									at (-8.5,-6)		{}; 
+\node (i)[subtree] 									at (-5.5,-5.5)  {\Large $\omega$};
+
+\draw[->] (-6, 1) -- (a);
+\draw[->] (a) 		-- (c);
+\draw[->] (a) 		-- (b.north);
+\draw[->] (c) 		-- (d);
+\draw[->] (c) 		-- (e.north);
+\draw[->] (d) 		-- (f);
+\draw[->] (d) 		-- (g.north);
+\draw[->] (f) 		-- (h);
+\draw[->] (f) 		-- (i.north);
+
+\draw[->, semithick, double] (-2.25, 0) -- node[above, outer sep=3pt] {\large \texttt delete 50} (0.25, 0);
+
+\node (ia)[treenode] 								at (2,0)       	{$X$$\prime$ \\ 55};
+\node (ib)[subtree] 								at (0.5,-1)  		{\Large $\alpha$};
+\node (ic)[treenode] 								at (4,-1.5) 		{$Y0$ \\ 100};
+\node (id)[treenode]								at (2.5,-3)			{$Y1$ \\ 60}; 
+\node (ie)[subtree] 								at (5,-2.5)    	{\Large $\beta$};
+\node (if)[subtree]									at (1,-4)				{\Large $\omega$}; 
+\node (ig)[subtree] 								at (4,-4)   		{\Large $\gamma$};
+
+\draw[->] (2, 1) 	-- (ia);
+\draw[->] (ia) 		-- (ic);
+\draw[->] (ia) 		-- (ib.north);
+\draw[->] (ic) 		-- (id);
+\draw[->] (ic) 		-- (ie.north);
+\draw[->] (id) 		-- (if.north);
+\draw[->] (id) 		-- (ig.north);

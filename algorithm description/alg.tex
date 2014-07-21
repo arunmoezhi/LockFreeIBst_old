@@ -1,0 +1,202 @@
+\documentclass{llncs}
+\usepackage{llncsdoc}
+\usepackage[ruled,vlined,linesnumbered,noresetcount]{algorithm2e}
+\AlgoDisplayBlockMarkers 
+\newcommand{\markAndKey}{$markAndKey$}
+\newcommand{\child}{$child$}
+\newcommand{\readyToReplace}{$readyToReplace$}
+\newcommand{\node}{$node$}
+\newcommand{\parent}{$parent$}
+\newcommand{\lastUParent}{$lastUParent$}
+\newcommand{\lastUNode}{$lastUNode$}
+\newcommand{\mode}{$mode$}
+\newcommand{\type}{$type$}
+\newcommand{\seekRecord}{$seekRec$}
+\newcommand{\mySeekRecord}{$mySeekRec$}
+\newcommand{\state}{$state$}
+\newcommand{\myState}{$myState$}
+\newcommand{\nKey}{$nKey$}
+\newcommand{\which}{$which$}
+\newcommand{\address}{$address$}
+\newcommand{\result}{$result$}
+\newcommand{\newNode}{$newNode$}
+\newcommand{\needToHelp}{$needToHelp$}
+\newcommand{\Left}{$left$}
+\newcommand{\key}{$key$}
+\newcommand{\lN}{$lN$}
+\newcommand{\rN}{$rN$}
+\newcommand{\return}{\textbf{return }}
+\newcommand{\Break}{\textbf{break}}
+\newcommand{\True}{\textbf{true}}
+\newcommand{\False}{\textbf{false}}
+\begin{document}
+%-------------------------------------------------------------------------------------------------------------------
+\begin{algorithm}[Hf]
+\caption{structures used} 
+ 
+struct Node$\{$\\
+\Indp $\{$\textbf{Boolean},key$\}$ \markAndKey\; 
+$\{$\textbf{Boolean},\textbf{Boolean},\textbf{Boolean},NodePtr$\}$ \child[2]\;                     
+\textbf{Boolean} \readyToReplace\;
+\Indm $\}$\;
+
+struct seekRecord$\{$\\
+\Indp NodePtr \node\;
+NodePtr \parent\;
+NodePtr \lastUParent\;
+NodePtr \lastUNode\;
+\Indm $\}$\;
+
+struct State$\{$\\
+\Indp NodePtr \node\;
+NodePtr \parent\;
+Key $key$\;
+\textbf{enum} \mode $\{$ INJECTION, DISCOVERY, CLEANUP $\}$\;
+\textbf{enum} \type $\{$ SIMPLE, COMPLEX $\}$\;
+seekRecPtr \seekRecord\;
+\Indm $\}$\;
+\end{algorithm}
+%-------------------------------------------------------------------------------------------------------------------
+\begin{algorithm}[Hf]
+\caption{Search($key$)} 
+seek( $key$, \mySeekRecord )\;
+$\langle$*, \nKey$\rangle$ := \mySeekRecord$\rightarrow$\node$\rightarrow$\markAndKey\;
+\lIf{$key$ = \nKey} {\return \True} \lElse{\return \False}
+\end{algorithm}
+%-------------------------------------------------------------------------------------------------------------------
+\begin{algorithm}[Hf]
+\caption{Insert($key$)} 
+\While{\True}{
+seek( $key$, \mySeekRecord )\;
+$\langle$*, \nKey$\rangle$ := \mySeekRecord$\rightarrow$\node$\rightarrow$\markAndKey\;
+\lIf{$key$ = \nKey} {\return \False}
+\newNode := create a new node and initialize its fields\;
+\which \space := $key$ $<$ \nKey \space $?$ LEFT: RIGHT\;
+$\langle$*,*,*,\address$\rangle$ := \node$\rightarrow$\child[\which]\;
+\result := CAS(\node$\rightarrow$\child[\which],$\langle$1,0,0,\address$\rangle$,$\langle$0,0,0,\newNode$\rangle$)\;
+\lIf{\result}{\return \True}
+$\langle$*,$d$,$p$,\address$\rangle$ := \node$\rightarrow$\child[\which]\;
+\lIf{\textbf{not} ($d$ or $p$)} {\textbf{continue}}
+deepHelp(\mySeekRecord$\rightarrow$\lastUNode,\mySeekRecord$\rightarrow$\lastUParent)\;
+}
+\end{algorithm}
+%-------------------------------------------------------------------------------------------------------------------
+\begin{algorithm}[Hf]
+\caption{Delete($key$)} 
+\tcp{initialize the state record}
+\myState$\rightarrow$\mode := INJECTION;
+\myState$\rightarrow$\key := $key$\;
+\While{\True}{
+seek( $key$, \mySeekRecord )\;
+\node := \mySeekRecord$\rightarrow$\node;
+\parent := \mySeekRecord$\rightarrow$\parent\;
+$\langle$*, \nKey$\rangle$ := \node$\rightarrow$\markAndKey\;
+\If{\myState$\rightarrow$\key $\neq$ \nKey} 
+{
+	\tcp{the key does not exist in the tree}
+	\lIf{\myState$\rightarrow$\mode = INJECTION} {\return \False} \lElse{\return \True}
+}
+\needToHelp :=\False\;
+\tcp{perform appropriate action depending on the mode}
+\If{\myState$\rightarrow$\mode = INJECTION}
+{
+	\myState$\rightarrow$\node := \node \space \tcp{store a reference to the node}
+	\result := inject(\myState) \space \tcp{attempt to inject}
+	\lIf{\textbf{not} \result} {\needToHelp := \True}
+}
+\tcp{mode would have changed if the op was injected}
+\If{\myState$\rightarrow$\mode $\neq$ INJECTION}
+{
+	\tcp{if the node found by seek is different from the one stored in state record, then the node is already deleted}
+	\lIf{\myState$\rightarrow$\node $\neq$ \node} {\return \True}
+	\myState$\rightarrow$\parent := \parent \space \tcp{update parent with recent seek}
+}
+\If{\myState$\rightarrow$\mode = DISCOVERY}
+{
+	findAndMarkSuccessor(\myState)\;
+}
+\If{\myState$\rightarrow$\mode = DISCOVERY}
+{
+	removeSuccessor(\myState)\;
+}
+\If{\myState$\rightarrow$\mode = CLEANUP}
+{
+	\result := cleanup(\myState,0)\;
+	\lIf{\result}{\Return \True}
+	\Else
+	{
+		$\langle$*, \nKey$\rangle$ := \node$\rightarrow$\markAndKey;
+		\myState$\rightarrow$\key := \nKey\;
+		\tcp{help if helpee node is not the node of interest}
+		\lIf{\mySeekRecord$\rightarrow$\lastUNode $\neq$ \node} {\needToHelp :=\True}
+	}
+}
+\lIf{\needToHelp}
+{
+	deepHelp(\mySeekRecord$\rightarrow$\lastUNode,\mySeekRecord$\rightarrow$\lastUParent)
+}
+
+}
+\end{algorithm}
+%-------------------------------------------------------------------------------------------------------------------
+\begin{algorithm}[Hf]
+\caption{Inject(\state)} 
+\node := \state$\rightarrow$\node \space \tcp{try to set the delete flag on the left edge}
+\While{\True}
+{
+	$\langle$n,$d$,$p$,\Left$\rangle$ := \node$\rightarrow$\child[LEFT]\;
+	\lIf( // edge is already marked){$d$ or $p$} {\Return \False}
+	\result := CAS(\node$\rightarrow$\child[LEFT],$\langle$n,0,0,\Left$\rangle$,$\langle$n,1,0,\Left$\rangle$)\;
+	\lIf( // retry from beginning of while loop){\result} {\Break}
+	updateModeAndType(\state) \tcp{mark right edge, update mode and type}
+	\return \True\;
+}
+\end{algorithm}
+%-------------------------------------------------------------------------------------------------------------------
+\begin{algorithm}[Hf]
+\caption{updateModeAndType(\state)} 
+\node := \state$\rightarrow$\node \space \tcp{retrieve the address from the state record}
+\If( // mark right edge if unmarked){\node$\rightarrow$\child[RIGHT] $\neq$ $\langle$*,1,*,*$\rangle$}
+{
+	BTS(\node$\rightarrow$\child[RIGHT], DELETE$\_$FLAG)\;
+}
+$\langle$m,*$\rangle$ := \node$\rightarrow$\markAndKey\;
+$\langle$\lN,*,*,*$\rangle$ := \node$\rightarrow$\child[LEFT];
+$\langle$\rN,*,*,*$\rangle$ := \node$\rightarrow$\child[RIGHT]\;
+\If( // update the op mode and type){\lN or \rN}
+{
+	\If{$m$}
+	{
+		\state$\rightarrow$\type := COMPLEX;
+		\node$\rightarrow$\readyToReplace := \True;
+	}
+	\Else
+	{
+		\state$\rightarrow$\type := SIMPLE;
+		\state$\rightarrow$\mode := CLEANUP;
+	}
+}
+\Else
+{
+	\state$\rightarrow$\type := COMPLEX\;
+	\lIf{\readyToReplace}{\state$\rightarrow$\mode := CLEANUP}
+	\lElse{\state$\rightarrow$\mode := DISCOVERY}
+}
+\return\;
+\end{algorithm}
+\end{document}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

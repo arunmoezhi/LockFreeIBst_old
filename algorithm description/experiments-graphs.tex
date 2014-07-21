@@ -1,0 +1,78 @@
+\newpage
+\begin{tikzpicture}
+	\begin{groupplot}[group style={group size= 2 by 4},height=5cm,width=6.4cm]
+		\nextgroupplot[title=Read-Dominated,ylabel={keyrange: 1K},symbolic x coords={1,2,4,8,16,32,64,128},xtick=data]
+				\addplot[red,mark=triangle] 	table{Data/HJ-BST.dat}; \label{plots:HJ-BST}
+				\addplot[blue,mark=asterisk] 	table{Data/NM-BST.dat}; \label{plots:NM-BST}
+				\addplot[green,mark=square] 	table{Data/RM-BST.dat}; \label{plots:RM-BST}
+				\coordinate (top) at (rel axis cs:0,1);% coordinate at top of the first plot
+		\nextgroupplot[title=Mixed,symbolic x coords={1,2,4,8,16,32,64,128},xtick=data]
+				\addplot[red,mark=triangle] 	table{Data/HJ-BST.dat};
+				\addplot[blue,mark=asterisk] 	table{Data/NM-BST.dat};
+				\addplot[green,mark=square] 	table{Data/RM-BST.dat};
+		\nextgroupplot[ylabel={keyrange: 10K},symbolic x coords={1,2,4,8,16,32,64,128},xtick=data]
+				\addplot[red,mark=triangle] 	table{Data/HJ-BST.dat};
+				\addplot[blue,mark=asterisk] 	table{Data/NM-BST.dat};
+				\addplot[green,mark=square] 	table{Data/RM-BST.dat};
+		\nextgroupplot[symbolic x coords={1,2,4,8,16,32,64,128},xtick=data]
+				\addplot[red,mark=triangle] 	table{Data/HJ-BST.dat};
+				\addplot[blue,mark=asterisk] 	table{Data/NM-BST.dat};
+				\addplot[green,mark=square] 	table{Data/RM-BST.dat};
+		\nextgroupplot[ylabel={keyrange: 100K},symbolic x coords={1,2,4,8,16,32,64,128},xtick=data]
+				\addplot[red,mark=triangle] 	table{Data/HJ-BST.dat};
+				\addplot[blue,mark=asterisk] 	table{Data/NM-BST.dat};
+				\addplot[green,mark=square] 	table{Data/RM-BST.dat};
+		\nextgroupplot[symbolic x coords={1,2,4,8,16,32,64,128},xtick=data]
+				\addplot[red,mark=triangle] 	table{Data/HJ-BST.dat};
+				\addplot[blue,mark=asterisk] 	table{Data/NM-BST.dat};
+				\addplot[green,mark=square] 	table{Data/RM-BST.dat};
+		\nextgroupplot[xlabel={Number of Threads},ylabel={keyrange: 1M},symbolic x coords={1,2,4,8,16,32,64,128},xtick=data]
+				\addplot[red,mark=triangle] 	table{Data/HJ-BST.dat};
+				\addplot[blue,mark=asterisk] 	table{Data/NM-BST.dat};
+				\addplot[green,mark=square] 	table{Data/RM-BST.dat};
+		\nextgroupplot[xlabel={Number of Threads},symbolic x coords={1,2,4,8,16,32,64,128},xtick=data]
+				\addplot[red,mark=triangle] 	table{Data/HJ-BST.dat};
+				\addplot[blue,mark=asterisk] 	table{Data/NM-BST.dat};
+				\addplot[green,mark=square] 	table{Data/RM-BST.dat};
+				\coordinate (bot) at (rel axis cs:0,0);% coordinate at bottom of the last plot
+	\end{groupplot}
+	\path (top-|current bounding box.west)-- node[anchor=south,rotate=90] {Throughput (million ops/sec)} (bot-|current bounding box.west);
+	\path (top|-current bounding box.north)-- coordinate(legendpos) (bot|-current bounding box.north);
+	\matrix[matrix of nodes, anchor=south, draw, inner sep=0.2em, draw] at ([yshift=1ex]legendpos)
+  {
+    \ref{plots:HJ-BST}& HJ-BST&[5pt]
+    \ref{plots:NM-BST}& NM-BST&[5pt]
+    \ref{plots:RM-BST}& RM-BST\\
+	};
+\end{tikzpicture}
+\newpage
+\begin{tikzpicture}
+	\begin{groupplot}[group style={group size= 1 by 4},height=5cm,width=6.4cm]
+		\nextgroupplot[title=Write-Dominated,ylabel={keyrange: 1K},symbolic x coords={1,2,4,8,16,32,64,128},xtick=data]
+				\addplot[red,mark=triangle] 	table{Data/HJ-BST.dat}; 
+				\addplot[blue,mark=asterisk] 	table{Data/NM-BST.dat}; 
+				\addplot[green,mark=square] 	table{Data/RM-BST.dat}; 
+				\coordinate (top) at (rel axis cs:0,1);% coordinate at top of the first plot
+		\nextgroupplot[ylabel={keyrange: 10K},symbolic x coords={1,2,4,8,16,32,64,128},xtick=data]
+				\addplot[red,mark=triangle] 	table{Data/HJ-BST.dat};
+				\addplot[blue,mark=asterisk] 	table{Data/NM-BST.dat};
+				\addplot[green,mark=square] 	table{Data/RM-BST.dat};
+		\nextgroupplot[ylabel={keyrange: 100K},symbolic x coords={1,2,4,8,16,32,64,128},xtick=data]
+				\addplot[red,mark=triangle] 	table{Data/HJ-BST.dat};
+				\addplot[blue,mark=asterisk] 	table{Data/NM-BST.dat};
+				\addplot[green,mark=square] 	table{Data/RM-BST.dat};
+		\nextgroupplot[xlabel={Number of Threads},ylabel={keyrange: 1M},symbolic x coords={1,2,4,8,16,32,64,128},xtick=data]
+				\addplot[red,mark=triangle] 	table{Data/HJ-BST.dat};
+				\addplot[blue,mark=asterisk] 	table{Data/NM-BST.dat};
+				\addplot[green,mark=square] 	table{Data/RM-BST.dat};
+				\coordinate (bot) at (rel axis cs:0,0);% coordinate at bottom of the last plot
+	\end{groupplot}
+	\path (top-|current bounding box.west)-- node[anchor=south,rotate=90] {Throughput (million ops/sec)} (bot-|current bounding box.west);
+	\path (top|-current bounding box.north)-- coordinate(legendpos) (bot|-current bounding box.north);
+	\matrix[matrix of nodes, anchor=south, draw, inner sep=0.2em, draw] at ([yshift=1ex]legendpos)
+  {
+    \ref{plots:HJ-BST}& HJ-BST&[5pt]
+    \ref{plots:NM-BST}& NM-BST&[5pt]
+    \ref{plots:RM-BST}& RM-BST\\
+	};
+\end{tikzpicture}

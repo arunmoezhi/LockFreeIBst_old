@@ -1,0 +1,21 @@
+\begin{thebibliography}{1}
+\providecommand{\url}[1]{\texttt{#1}}
+\providecommand{\urlprefix}{URL }
+
+\bibitem{EllFat+:2010:PODC}
+Ellen, F., Fataourou, P., Ruppert, E., van Breugel, F.: {Non-Blocking Binary
+  Search Trees}. In: Proceedings of the 29th ACM Symposium on Principles of
+  Distributed Computing (PODC). pp. 131--140 (Jul 2010)
+
+\bibitem{HowJon:2012:SPAA}
+Howley, S.V., Jones, J.: {A Non-Blocking Internal Binary Search Tree}. In:
+  Proceedings of the 24th ACM Symposium on Parallelism in Algorithms and
+  Architectures (SPAA). pp. 161--171 (Jun 2012)
+
+\bibitem{Natarajan:2014:PPOPP}
+Natarajan, A., Mittal, N.: Fast concurrent lock-free binary search trees. In:
+  Proceedings of the 19th ACM SIGPLAN Symposium on Principles and Practice of
+  Parallel Programming. pp. 317--328. PPoPP '14, ACM, New York, NY, USA (2014),
+  \url{http://doi.acm.org/10.1145/2555243.2555256}
+
+\end{thebibliography}

@@ -1,0 +1,37 @@
+\section{Experimental Evaluation}
+\subsubsection{Experimental Setup:} We conducted our experiments on an X86\_64 AMD Opteron 6276 machine running GNU/Linux operating system. We used gcc 4.6.3 compiler with optimization flag set to $O3$. The Table I shows the hardware features of this machine. All implementations were written in C++. To compare the performance of different implementations, we considered the following parameters:
+\begin{enumerate}
+\item \textbf{Maximum Tree Size:} This depends on the size of the key space. We consider five different key ranges: 1000(1K), 10,000 (10K), 100,000 (100K), 1 million (1M) and 10 million (10M) keys. To capture only the steady state behaviour we \textit{pre-populated} the tree to 50$\%$ of its maximum size, prior to starting the simulation run.
+\item \textbf{Relative Distribution of Various Operations:} We consider three different workload  distributions: (a) \textit{read-dominated} workload : 90$\%$ search, 9$\%$ insert and 1$\%$ delete, (b) \textit{mixed} workload : 70$\%$ search, 20$\%$ insert and 10$\%$ delete and (c) \textit{write-dominated} workload : 0$\%$ search, 50$\%$ insert and 50$\%$ delete
+\item \textbf{Maximum Degree of Contention:} This depends on number of threads concurrently operating on the tree. We varied the number of threads from 1 to 128 in increments in powers of 2.
+\end{enumerate}
+\begin{table}[h]
+\caption{hardware features}
+\begin{tabular}{|l|l|}
+\hline
+CPU packages      & 4         \\ \hline
+Cores per package & 8         \\ \hline
+Threads per core  & 2         \\ \hline
+Clock frequency   & 2.3 GHz   \\ \hline
+L1 cache (I/D)    & 64KB/16KB \\ \hline
+L2 cache          & 2 MB      \\ \hline
+L3 cache          & 6 MB      \\ \hline
+Memory            & 256 GB    \\ \hline
+\end{tabular}
+\quad
+\begin{tabular}{|c|c|c|c|c|}
+\hline
+\multirow{2}{*}{\textbf{Algorithm}} & \multicolumn{2}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}\# of \\ Objects\\  Allocated\end{tabular}}} & \multicolumn{2}{c|}{\textbf{\begin{tabular}[c]{@{}c@{}}\#of Atomic \\ Instructions\\  Executed\end{tabular}}} \\ \cline{2-5} 
+                                    & \textbf{Ins}                                     & \textbf{Del}                                     & \textbf{Ins}                                          & \textbf{Del}                                          \\ \hline
+\textbf{Ellen \& \textit{et al}.}                      & 4                                                & 2                                                & 3                                                     & 4                                                     \\ \hline
+\textbf{Howley \& Jones}                     & 2                                                & 1                                                & 3                                                     & upto 9                                                \\ \hline
+\textbf{Natarajan \& Mittal}        & 2                                                & 0                                                & 1                                                     & 3                                                     \\ \hline
+\textbf{This work}                  & 1                                                & 1                                                & 1                                                     & upto 6                                                \\ \hline
+\end{tabular}
+\end{table}
+We compared the performance of different implementations with respect to two metrics:
+\begin{enumerate}
+	\item \textbf{System Throughput:} it is defined as the number of operations executed per unit time.
+	\item \textbf{Avg Seek Length:} it is defined as the average length of the access path of a seek operation.
+\end{enumerate}
+\input{experiments-graphs}
