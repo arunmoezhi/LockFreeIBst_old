@@ -1,1 +1,303 @@
-\section{Pseudo code}
+%-------------------------------------------------------------------------------------------------------------------
+\begin{algorithm}[h]
+\caption{structures used\label{1}} 
+ 
+struct Node$\{$\\
+\Indp $\{$\textbf{Boolean},key$\}$ \markAndKey\; 
+$\{$\textbf{Boolean},\textbf{Boolean},\textbf{Boolean},NodePtr$\}$ \child[2]\;                     
+\textbf{Boolean} \readyToReplace\;
+\Indm $\}$\;
+
+struct seekRecord$\{$\\
+\Indp NodePtr \node;
+NodePtr \parent\;
+NodePtr \lastUParent;
+NodePtr \lastUNode\;
+NodePtr \injectionPoint\;
+\Indm $\}$\;
+
+struct State$\{$\\
+\Indp NodePtr \node;
+NodePtr \parent\;
+Key $key$\;
+\textbf{enum} \mode $\{$ INJECTION, DISCOVERY, CLEANUP $\}$\;
+\textbf{enum} \type $\{$ SIMPLE, COMPLEX $\}$\;
+seekRecPtr \seekRecord\;
+\Indm $\}$\;
+\end{algorithm}
+%-------------------------------------------------------------------------------------------------------------------
+\begin{algorithm}[h]
+\caption{seek(\key,\seekRecord)} 
+\While{\True}
+{
+	\tcp{create two local seek records:\cSeek (current seek record) and \pSeek (previous seek record) used for the traversal}
+	\While{\True}
+	{
+		$\langle$*,\cKey$\rangle$ := \curr$\rightarrow$\markAndKey; \tcp{key in the \curr \space of \cSeek}
+		\If( // key found; stop the traversal){\key = \cKey}{\done := \True; \Break\;}
+		\which := \key $<$\cKey \space ? LEFT: RIGHT\;
+		$\langle$n,$d$,$p$,\address$\rangle$ := \curr$\rightarrow$\child[\which]; \tcp{ read the next edge}
+		\If( // null flag is set; reached a leaf node){n}
+		{
+			\If{key stored in \lastRNode \space has not changed}
+			{
+				\done := \True; \Break; \tcp{use data from \cSeek}
+			}
+			\ElseIf{\lastRNode of \cSeek \space $\&$ \pSeek \space matches}
+			{
+				\done := \True; \Break; \tcp{use data from \pSeek}
+			}
+			\Else
+			{
+				\Break; \tcp{after copying \cSeek \space to \pSeek}
+			}
+		}
+		\If( // next edge to be traversed is a right edge){\which = RIGHT}
+		{
+			\lastRNode := \curr; \tcp{ keep track of curr node}
+			\lastRKey := \cKey; \tcp{and its key}
+		}
+		\prev := \curr;
+		\curr : = \address; \tcp{traverse the next edge}
+		\If( // keep track the last unmarked edge){\textbf{not} ($d$ or $p$)}
+		{
+			\lastUParent := \prev;
+			\lastUNode := \curr;
+		}		
+	}
+	\If{\done}
+	{
+		\tcp{initialize the appropriate seek record (\cSeek \space or \pSeek)}
+		\Return\;
+	}
+}
+\end{algorithm}
+%-------------------------------------------------------------------------------------------------------------------
+\begin{algorithm}[h]
+\caption{Search($key$)} 
+seek( $key$, \mySeekRecord )\;
+$\langle$*, \nKey$\rangle$ := \mySeekRecord$\rightarrow$\node$\rightarrow$\markAndKey\;
+\lIf{$key$ = \nKey} {\return \True} \lElse{\return \False}
+\end{algorithm}
+%-------------------------------------------------------------------------------------------------------------------
+\begin{algorithm}[h]
+\caption{Insert($key$)} 
+\While{\True}{
+seek( $key$, \mySeekRecord )\;
+$\langle$*, \nKey$\rangle$ := \mySeekRecord$\rightarrow$\node$\rightarrow$\markAndKey\;
+\lIf{$key$ = \nKey} {\return \False}
+\newNode := create a new node and initialize its fields\;
+\which \space := $key$ $<$ \nKey \space $?$ LEFT: RIGHT\;
+$\langle$*,*,*,\address$\rangle$ := \mySeekRecord$\rightarrow$\injectionPoint\;
+\result := CAS(\node$\rightarrow$\child[\which],$\langle$1,0,0,\address$\rangle$,$\langle$0,0,0,\newNode$\rangle$)\;
+\lIf{\result}{\return \True}
+$\langle$*,$d$,$p$,\address$\rangle$ := \node$\rightarrow$\child[\which]; \tcp{find out why the CAS failed}
+\lIf ( // CAS failed due to another insert op){\textbf{not} ($d$ or $p$)} {\textbf{continue}}
+deepHelp(\mySeekRecord$\rightarrow$\lastUNode,\mySeekRecord$\rightarrow$\lastUParent)\;
+}
+\end{algorithm}
+%-------------------------------------------------------------------------------------------------------------------
+\begin{algorithm}[h]
+\caption{Inject(\state)} 
+\node := \state$\rightarrow$\node \space \tcp{try to set the delete flag on the left edge}
+\While{\True}
+{
+	$\langle$n,$d$,$p$,\Left$\rangle$ := \node$\rightarrow$\child[LEFT]\;
+	\lIf( // edge is already marked){$d$ or $p$} {\Return \False}
+	\result := CAS(\node$\rightarrow$\child[LEFT],$\langle$n,0,0,\Left$\rangle$,$\langle$n,1,0,\Left$\rangle$)\;
+	\lIf( // retry from beginning of while loop){\result} {\Break}
+	updateModeAndType(\state) \tcp{mark right edge, update mode and type}
+	\return \True\;
+}
+\end{algorithm}
+%-------------------------------------------------------------------------------------------------------------------
+\begin{algorithm}[h]
+\caption{updateModeAndType(\state)} 
+\node := \state$\rightarrow$\node \space \tcp{retrieve the address from the state record}
+\If( // mark right edge if unmarked){\node$\rightarrow$\child[RIGHT] $\neq$ $\langle$*,1,*,*$\rangle$}
+{
+	BTS(\node$\rightarrow$\child[RIGHT], DELETE$\_$FLAG)\;
+}
+$\langle$m,*$\rangle$ := \node$\rightarrow$\markAndKey\;
+$\langle$\lN,*,*,*$\rangle$ := \node$\rightarrow$\child[LEFT];
+$\langle$\rN,*,*,*$\rangle$ := \node$\rightarrow$\child[RIGHT]\;
+\If( // update the op mode and type){\lN or \rN}
+{
+	\If{$m$}
+	{
+		\state$\rightarrow$\type := COMPLEX;
+		\node$\rightarrow$\readyToReplace := \True;
+	}
+	\Else
+	{
+		\state$\rightarrow$\type := SIMPLE;
+		\state$\rightarrow$\mode := CLEANUP;
+	}
+}
+\Else
+{
+	\state$\rightarrow$\type := COMPLEX\;
+	\lIf{\readyToReplace}{\state$\rightarrow$\mode := CLEANUP}
+	\lElse{\state$\rightarrow$\mode := DISCOVERY}
+}
+\return\;
+\end{algorithm}
+%-------------------------------------------------------------------------------------------------------------------
+\begin{algorithm}[h]
+\caption{findSmallest(\node,\Right,\seekRecord)} 
+\tcp{find the smallest key in the subtree rooted at the right child}
+\lastUParent := \node; \lastUNode := \Right; \prev := \node; \curr := \Right\;
+\While{\True}
+{
+	$\langle$n,$d$,$p$,\Left$\rangle$ := \curr$\rightarrow$\child[LEFT]\;
+	\lIf{n}{\textbf{break}}
+	\prev := \curr; \curr := \Left; \tcp{ traverse the next edge}
+	\If( // keep track of the last unmarked edge){\textbf{not} ($d$ or $p$)}
+	{
+		\lastUParent := \prev; \lastUNode := \curr
+	}
+	\tcp{update the seek record}
+	\Return\;
+}
+\end{algorithm}
+%-------------------------------------------------------------------------------------------------------------------
+\begin{algorithm}
+\caption{Delete($key$)} 
+\tcp{initialize the state record}
+\myState$\rightarrow$\mode := INJECTION;
+\myState$\rightarrow$\key := $key$\;
+\While{\True}{
+seek( $key$, \mySeekRecord )\;
+\node := \mySeekRecord$\rightarrow$\node;
+\parent := \mySeekRecord$\rightarrow$\parent\;
+$\langle$*, \nKey$\rangle$ := \node$\rightarrow$\markAndKey\;
+\If{\myState$\rightarrow$\key $\neq$ \nKey} 
+{
+	\tcp{the key does not exist in the tree}
+	\lIf{\myState$\rightarrow$\mode = INJECTION} {\return \False} \lElse{\return \True}
+}
+\needToHelp :=\False\;
+\tcp{perform appropriate action depending on the mode}
+\If{\myState$\rightarrow$\mode = INJECTION}
+{
+	\myState$\rightarrow$\node := \node \space \tcp{store a reference to the node}
+	\result := inject(\myState) \space \tcp{attempt to inject}
+	\lIf{\textbf{not} \result} {\needToHelp := \True}
+}
+\tcp{mode would have changed if the op was injected}
+\If{\myState$\rightarrow$\mode $\neq$ INJECTION}
+{
+	\tcp{if the node found by seek is different from the one stored in state record, then the node is already deleted}
+	\lIf{\myState$\rightarrow$\node $\neq$ \node} {\return \True}
+	\myState$\rightarrow$\parent := \parent \space \tcp{update parent with recent seek}
+}
+\If{\myState$\rightarrow$\mode = DISCOVERY}
+{
+	findAndMarkSuccessor(\myState)\;
+}
+\If{\myState$\rightarrow$\mode = DISCOVERY}
+{
+	removeSuccessor(\myState)\;
+}
+\If{\myState$\rightarrow$\mode = CLEANUP}
+{
+	\result := cleanup(\myState,0)\;
+	\lIf{\result}{\Return \True}
+	\Else
+	{
+		$\langle$*, \nKey$\rangle$ := \node$\rightarrow$\markAndKey;
+		\myState$\rightarrow$\key := \nKey\;
+		\tcp{help if helpee node is not the node of interest}
+		\lIf{\mySeekRecord$\rightarrow$\lastUNode $\neq$ \node} {\needToHelp :=\True}
+	}
+}
+\lIf{\needToHelp}
+{
+	deepHelp(\mySeekRecord$\rightarrow$\lastUNode,\mySeekRecord$\rightarrow$\lastUParent)
+}
+
+}
+\end{algorithm}
+%-------------------------------------------------------------------------------------------------------------------
+\begin{algorithm}
+\caption{cleanup(\state,\dFlag)} 
+\tcp{retrieve the addresses from the state record}
+\pWhich := edge of the parent which needs to be switched\;
+\If{\state$\rightarrow$\type = COMPLEX}
+{
+	\newNode := a new copy of the node in which all the fields are unmarked\;
+	\tcp{try to switch the edge at the parent}
+	\result := CAS(\parent$\rightarrow$\child[\pWhich],$\langle$0,\dFlag,0,\node$\rangle$,$\langle$0,\dFlag,0,\newNode$\rangle$)\;
+}
+\Else
+{
+	\nWhich := non-Null child of the node being deleted\;
+	$\langle$n,*,*,\address$\rangle$ := \node$\rightarrow$\child[\nWhich]\;
+	\If( // set only the null flag; do not change the address){n}
+	{
+		\result := CAS(\parent$\rightarrow$\child[\pWhich],$\langle$0,\dFlag,0,\node$\rangle$,$\langle$1,\dFlag,0,\node$\rangle$)\;
+	}
+	\Else( // change the address here by switching the pointer)
+	{
+		\result := CAS(\parent$\rightarrow$\child[\pWhich],$\langle$0,\dFlag,0,\node$\rangle$,$\langle$0,\dFlag,0,\address$\rangle$)\;
+	}
+}
+\return \result\;
+\end{algorithm}
+%-------------------------------------------------------------------------------------------------------------------
+\begin{algorithm}
+\caption{findAndMarkSuccessor(\key,\seekRecord)} 
+\tcp{retrieve the addresses from the state record}
+\node := \state$\rightarrow$\node;
+\seekRecord := \state$\rightarrow$\seekRecord\;
+\While{\True}
+{
+	\Right := address of the right child\;
+	findSmallest(\node,\Right,\seekRecord)\;
+	\succNode := \seekRecord$\rightarrow$\node; \tcp{retrieve succ node from seek record}
+	\Left := address of the left child of the \succNode\;
+	\tcp{try to set the promote flag $\&$ copy the node address on the left edge using CAS}
+	\result := CAS(\succNode$\rightarrow$\child[LEFT],$\langle$1,0,0,\Left$\rangle$,$\langle$1,0,1,\node$\rangle$)\;
+	\lIf( // promote flag set; promotion will eventually succeed){\result}{\Break}
+	\tcp{reread the edge to see why the attempt to mark the edge failed}
+	$\langle$n,$d$,$p$,\Left$\rangle$ := \succNode$\rightarrow$\child[LEFT]\;
+	\If{$p$}
+	{
+		\If{\Left = \node}{\Break \tcp{successor node has already been selected}}
+		\Else( // the node found is a successor node for another delete operation)
+		{
+			\node$\rightarrow$\readyToReplace := \True
+		}
+		\lIf( // the node found has since gained a left child){\textbf{not} n}{\textbf{continue}}
+		\lIf{$d$}{the node found is undergoing deletion. So invoke helping}
+	}
+}
+updateModeAndType(\state); \tcp{update the operation mode and type}
+\Return\;
+\end{algorithm}
+%-------------------------------------------------------------------------------------------------------------------
+\begin{algorithm}
+\caption{removeSuccessor(\state)} 
+\tcp{retrieve the addresses from the state record}
+\node := \state$\rightarrow$\node;
+\seekRecord :=\state$\rightarrow$\seekRecord\;
+\succNode := \seekRecord$\rightarrow$\node\;
+\If{promote flag not set on right child edge of \succNode}
+{
+	BTS(\succNode$\rightarrow$\child[RIGHT],PROMOTE$\_$FLAG)\;
+}
+\node$\rightarrow$\markAndKey := $\langle$1,\succNode$\rightarrow$\markAndKey$\rangle$; \tcp{promote the key}
+\While{\True}
+{
+	\succParent := \seekRecord$\rightarrow$\parent; \tcp{retrieve parent of the \succNode}
+	\Right := right child address of \succNode\;
+	\result := CAS(\succParent$\rightarrow$\child[LEFT],$\langle$0,0,0,\succNode$\rangle$,$\langle$0,0,0,\Right$\rangle$)\;
+	\lIf( // successor removed successfully){\result}{\Break}
+	\tcp{invoke helping if needed}
+	findSmallest(\node, \Right,\seekRecord)\;
+	\lIf( // successor already removed){\seekRecord$\rightarrow$\node $\neq$ \succNode}{\Break}
+}
+\node$\rightarrow$\readyToReplace := \True\;
+\lIf{\state$\rightarrow$\parent $\neq$ \textbf{null}}{updateModeAndType(\state)}
+\Return\;
+\end{algorithm}

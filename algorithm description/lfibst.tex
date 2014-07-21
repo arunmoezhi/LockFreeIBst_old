@@ -10,17 +10,58 @@
 \usetikzlibrary{shapes.geometric,arrows,fit,matrix,positioning,pgfplots.groupplots}
 \usepackage{circuitikz}
 \usepackage{comment}
+\usepackage[ruled,vlined,linesnumbered,noresetcount]{algorithm2e}
+\AlgoDisplayBlockMarkers 
 
 
 %macros
-\newcommand{\node}{node}
-\newcommand{\readyToReplace}{readyToReplace}
-\newcommand{\markAndKey}{markAndKey}
-\newcommand{\child}{child}
-\newcommand{\deleteFlag}{deleteFlag}
-\newcommand{\promoteFlag}{promoteFlag}
-\newcommand{\nullFlag}{nullFlag}
-\newcommand{\anchorNode}{anchorNode}
+\newcommand{\node}{$node$}
+\newcommand{\readyToReplace}{$readyToReplace$}
+\newcommand{\markAndKey}{$markAndKey$}
+\newcommand{\child}{$child$}
+\newcommand{\deleteFlag}{$deleteFlag$}
+\newcommand{\promoteFlag}{$promoteFlag$}
+\newcommand{\nullFlag}{$nullFlag$}
+\newcommand{\anchorNode}{$anchorNode$}
+\newcommand{\parent}{$parent$}
+\newcommand{\lastUParent}{$lastUParent$}
+\newcommand{\lastUNode}{$lastUNode$}
+\newcommand{\injectionPoint}{$injectionPoint$}
+\newcommand{\mode}{$mode$}
+\newcommand{\type}{$type$}
+\newcommand{\seekRecord}{$seekRec$}
+\newcommand{\mySeekRecord}{$mySeekRec$}
+\newcommand{\succNode}{$succNode$}
+\newcommand{\succParent}{$succParent$}
+\newcommand{\state}{$state$}
+\newcommand{\myState}{$myState$}
+\newcommand{\lastRNode}{$anchorNode$}
+\newcommand{\lastRKey}{$anchorKey$}
+\newcommand{\cSeek}{$cSeek$}
+\newcommand{\pSeek}{$pSeek$}
+\newcommand{\cKey}{$cKey$}
+\newcommand{\nKey}{$nKey$}
+\newcommand{\pKey}{$pKey$}
+\newcommand{\which}{$which$}
+\newcommand{\pWhich}{$pWhich$}
+\newcommand{\nWhich}{$nWhich$}
+\newcommand{\address}{$address$}
+\newcommand{\result}{$out$}
+\newcommand{\newNode}{$newNode$}
+\newcommand{\needToHelp}{$needToHelp$}
+\newcommand{\Left}{$left$}
+\newcommand{\Right}{$right$}
+\newcommand{\key}{$key$}
+\newcommand{\lN}{$lN$}
+\newcommand{\rN}{$rN$}
+\newcommand{\prev}{$prev$}
+\newcommand{\curr}{$curr$}
+\newcommand{\dFlag}{$dFlg$}
+\newcommand{\done}{$done$}
+\newcommand{\return}{\textbf{return }}
+\newcommand{\Break}{\textbf{break}}
+\newcommand{\True}{\textbf{true}}
+\newcommand{\False}{\textbf{false}}
 
 \begin{document}
 \title{On Concurrent Lock-Free Binary Search Trees}
@@ -40,9 +81,9 @@ Concurrent Data Structure, Lock-Free Algorithm, Binary Search Tree
 
 \input{model}
 
-\input{algorithm}
-
 \input{pseudocode}
+
+\input{algorithm}
 
 \input{experiments}
 
