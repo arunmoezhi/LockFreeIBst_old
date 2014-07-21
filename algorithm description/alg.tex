@@ -14,6 +14,8 @@
 \newcommand{\type}{$type$}
 \newcommand{\seekRecord}{$seekRec$}
 \newcommand{\mySeekRecord}{$mySeekRec$}
+\newcommand{\succNode}{$succNode$}
+\newcommand{\succParent}{$succParent$}
 \newcommand{\state}{$state$}
 \newcommand{\myState}{$myState$}
 \newcommand{\lastRNode}{$anchorNode$}
@@ -290,19 +292,61 @@ $\langle$\rN,*,*,*$\rangle$ := \node$\rightarrow$\child[RIGHT]\;
 	}
 }
 \end{algorithm}
+%-------------------------------------------------------------------------------------------------------------------
+\begin{algorithm}[Hf]
+\caption{findAndMarkSuccessor(\key,\seekRecord)} 
+\tcp{retrieve the addresses from the state record}
+\node := \state$\rightarrow$\node;
+\seekRecord := \state$\rightarrow$\seekRecord\;
+\While{\True}
+{
+	\Right := address of the right child\;
+	findSmallest(\node,\Right,\seekRecord)\;
+	\succNode := \seekRecord$\rightarrow$\node; \tcp{retrieve succ node from seek record}
+	\Left := address of the left child of the \succNode\;
+	\tcp{try to set the promote flag $\&$ copy the node address on the left edge using CAS}
+	\result := CAS(\succNode$\rightarrow$\child[LEFT],$\langle$1,0,0,\Left$\rangle$,$\langle$1,0,1,\node$\rangle$)\;
+	\lIf( // promote flag set; promotion will eventually succeed){\result}{\Break}
+	\tcp{reread the edge to see why the attempt to mark the edge failed}
+	$\langle$n,$d$,$p$,\Left$\rangle$ := \succNode$\rightarrow$\child[LEFT]\;
+	\If{$p$}
+	{
+		\If{\Left = \node}{\Break \tcp{successor node has already been selected}}
+		\Else( // the node found is a successor node for another delete operation)
+		{
+			\node$\rightarrow$\readyToReplace := \True
+		}
+		\lIf( // the node found has since gained a left child){\textbf{not} n}{\textbf{continue}}
+		\lIf{$d$}{the node found is undergoing deletion. So invoke helping}
+	}
+}
+updateModeAndType(\state); \tcp{update the operation mode and type}
+\Return\;
+\end{algorithm}
+%-------------------------------------------------------------------------------------------------------------------
+\begin{algorithm}[Hf]
+\caption{removeSuccessor(\state)} 
+\tcp{retrieve the addresses from the state record}
+\node := \state$\rightarrow$\node;
+\seekRecord :=\state$\rightarrow$\seekRecord\;
+\succNode := \seekRecord$\rightarrow$\node\;
+\If{promote flag not set on right child edge of \succNode}
+{
+	BTS(\succNode$\rightarrow$\child[RIGHT],PROMOTE$\_$FLAG)\;
+}
+\node$\rightarrow$\markAndKey := $\langle$1,\succNode$\rightarrow$\markAndKey$\rangle$; \tcp{promote the key}
+\While{\True}
+{
+	\succParent := \seekRecord$\rightarrow$\parent; \tcp{retrieve parent of the \succNode}
+	\Right := right child address of \succNode\;
+	\result := CAS(\succParent$\rightarrow$\child[LEFT],$\langle$0,0,0,\succNode$\rangle$,$\langle$0,0,0,\Right$\rangle$)\;
+	\lIf( // successor removed successfully){\result}{\Break}
+	\tcp{invoke helping if needed}
+	findSmallest(\node, \Right,\seekRecord)\;
+	\lIf( // successor already removed){\seekRecord$\rightarrow$\node $\neq$ \succNode}{\Break}
+}
+\node$\rightarrow$\readyToReplace := \True\;
+\lIf{\state$\rightarrow$\parent $\neq$ \textbf{null}}{updateModeAndType(\state)}
+\Return\;
+\end{algorithm}
 \end{document}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
