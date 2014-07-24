@@ -12,59 +12,69 @@
 \usepackage{comment}
 \usepackage[ruled,vlined,linesnumbered,noresetcount]{algorithm2e}
 \AlgoDisplayBlockMarkers 
+\SetAlFnt{\footnotesize}
+%\SetAlFnt{\small}
+\usepackage{setspace}
 
+\tikzset
+{
+    treenode/.style = {circle, draw=black, align=center, minimum size=1cm},
+    subtree/.style  = {isosceles triangle, draw=black, align=center, minimum height=0.5cm, minimum width=1cm, shape border rotate=90, anchor=north}
+}
 
 %macros
-\newcommand{\node}{$node$}
-\newcommand{\readyToReplace}{$readyToReplace$}
-\newcommand{\markAndKey}{$markAndKey$}
-\newcommand{\child}{$child$}
-\newcommand{\deleteFlag}{$deleteFlag$}
-\newcommand{\promoteFlag}{$promoteFlag$}
-\newcommand{\nullFlag}{$nullFlag$}
-\newcommand{\anchorNode}{$anchorNode$}
-\newcommand{\parent}{$parent$}
-\newcommand{\lastUParent}{$lastUParent$}
-\newcommand{\lastUNode}{$lastUNode$}
-\newcommand{\injectionPoint}{$injectionPoint$}
-\newcommand{\mode}{$mode$}
-\newcommand{\type}{$type$}
-\newcommand{\seekRecord}{$seekRec$}
-\newcommand{\mySeekRecord}{$mySeekRec$}
-\newcommand{\succNode}{$succNode$}
-\newcommand{\succParent}{$succParent$}
-\newcommand{\state}{$state$}
-\newcommand{\myState}{$myState$}
-\newcommand{\lastRNode}{$anchorNode$}
-\newcommand{\lastRKey}{$anchorKey$}
-\newcommand{\cSeek}{$cSeek$}
-\newcommand{\pSeek}{$pSeek$}
-\newcommand{\cKey}{$cKey$}
-\newcommand{\nKey}{$nKey$}
-\newcommand{\pKey}{$pKey$}
-\newcommand{\which}{$which$}
-\newcommand{\pWhich}{$pWhich$}
-\newcommand{\nWhich}{$nWhich$}
-\newcommand{\address}{$address$}
-\newcommand{\result}{$out$}
-\newcommand{\newNode}{$newNode$}
-\newcommand{\needToHelp}{$needToHelp$}
-\newcommand{\Left}{$left$}
-\newcommand{\Right}{$right$}
-\newcommand{\key}{$key$}
-\newcommand{\lN}{$lN$}
-\newcommand{\rN}{$rN$}
-\newcommand{\prev}{$prev$}
-\newcommand{\curr}{$curr$}
-\newcommand{\dFlag}{$dFlg$}
-\newcommand{\done}{$done$}
-\newcommand{\return}{\textbf{return }}
+\newcommand{\node}{\textit{node}}
+\newcommand{\terminalnode}{\textit{terminal node}}
+\newcommand{\readyToReplace}{\textit{readyToReplace}}
+\newcommand{\markAndKey}{\textit{markAndKey}}
+\newcommand{\child}{\textit{child}}
+\newcommand{\deleteFlag}{\textit{deleteFlag}}
+\newcommand{\promoteFlag}{\textit{promoteFlag}}
+\newcommand{\nullFlag}{\textit{nullFlag}}
+\newcommand{\anchorNode}{\textit{anchor node}}
+\newcommand{\parent}{\textit{parent}}
+\newcommand{\lastUParent}{\textit{lastUParent}}
+\newcommand{\lastUNode}{\textit{lastUNode}}
+\newcommand{\injectionPoint}{\textit{injectionPoint}}
+\newcommand{\mode}{\textit{mode}}
+\newcommand{\type}{\textit{type}}
+\newcommand{\seekRecord}{\textit{seekRec}}
+\newcommand{\mySeekRecord}{\textit{mySeekRec}}
+\newcommand{\succNode}{\textit{succNode}}
+\newcommand{\succParent}{\textit{succParent}}
+\newcommand{\state}{\textit{state}}
+\newcommand{\myState}{\textit{myState}}
+\newcommand{\lastRNode}{\textit{anchor node}}
+\newcommand{\lastRKey}{\textit{anchor key}}
+\newcommand{\cSeek}{\textit{cSeek}}
+\newcommand{\pSeek}{\textit{pSeek}}
+\newcommand{\cKey}{\textit{cKey}}
+\newcommand{\nKey}{\textit{nKey}}
+\newcommand{\pKey}{\textit{pKey}}
+\newcommand{\which}{\textit{which}}
+\newcommand{\pWhich}{\textit{pWhich}}
+\newcommand{\nWhich}{\textit{nWhich}}
+\newcommand{\address}{\textit{address}}
+\newcommand{\result}{\textit{out}}
+\newcommand{\newNode}{\textit{newNode}}
+\newcommand{\needToHelp}{\textit{needToHelp}}
+\newcommand{\Left}{\textit{left}}
+\newcommand{\Right}{\textit{right}}
+\newcommand{\key}{\textit{key}}
+\newcommand{\lN}{\textit{lN}}
+\newcommand{\rN}{\textit{rN}}
+\newcommand{\prev}{\textit{prev}}
+\newcommand{\curr}{\textit{curr}}
+\newcommand{\dFlag}{\textit{dFlg}}
+\newcommand{\done}{\textit{done}}
+\newcommand{\accesspath}{\textit{access-path}}
+\newcommand{\return}{\textbf{return}}
 \newcommand{\Break}{\textbf{break}}
-\newcommand{\True}{\textbf{true}}
-\newcommand{\False}{\textbf{false}}
+\newcommand{\True}{\textit{true}}
+\newcommand{\False}{\textit{false}}
 
 \begin{document}
-\title{On Concurrent Lock-Free Binary Search Trees}
+\title{A Fast Lock-Free Internal Binary Search Tree}
 
 \author{Arunmoezhi Ramachandran, Neeraj Mittal}
 
@@ -80,8 +90,6 @@ Concurrent Data Structure, Lock-Free Algorithm, Binary Search Tree
 \input{introduction}
 
 \input{model}
-
-\input{pseudocode}
 
 \input{algorithm}
 

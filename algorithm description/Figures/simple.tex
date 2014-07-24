@@ -1,23 +1,31 @@
-\node (a)[treenode] 								at (-3,0)       {$X$ \\ 100};
-\node (b)[treenode, fill=black!20] 	at (-4.5,-1.5) 	{$Y$ \\ 50};
-\node (c)[subtree] 									at (-1,-1)      {\Large $\alpha$};
-\node (d)[subtree] 									at (-6,-2.5)    {\Large $\beta$};
-\node (e)[ground] 									at (-2.5,-2.5)	{}; 
+\node (x)		[treenode] 									at (-3,0)       {$X$ \\ 100};
+\node (y)		[treenode, fill=black!20] 	at (-4.5,-1.5) 	{$Y$ \\ 50};
+\node (a)		[subtree] 									at (-1,-1)      {\Large $\alpha$};
+\node (b)		[subtree] 									at (-6,-2.5)    {\Large $\beta$};
+\node (gnd)	[ground] 										at (-2.5,-2.5)	{}; 
+\node (xl) 	[] 													at(-4.1,-0.2) 	{\textbf{parent}};
+\node (yl) 	[] 													at(-6,-1.7) 		{\textbf{target node}};
 
-\draw[->] (-3, 1) -- (a);
-\draw[->] (a) 		-- (b);
-\draw[->] (a) 		-- (c.north);
-\draw[->] (b) 		-- (d.north);
-\draw[->] (b) 		-- (e);
+\path[every node/.style={font=\sffamily\small}]
+%(-7, -1.7)edge[->] 								node [above, outer sep=3pt]					{target node} (-5.2,-1.7)
+(-3, 1) edge[->] 								node 					{} (x)
+(x) 		edge[->] 								node  				{} (y)
+(x) 		edge[->] 								node 				 	{} (a.north)
+(y) 		edge[->,dotted,thick]		node 					{}(b.north)
+(y) 		edge[->,dotted,thick]		node 					{}(gnd);
 
+\path[every node/.style={font=\sffamily\small}]
+(-0.75, 0) edge[->,semithick, double] node [above, outer sep=3pt] {\large \texttt delete 50} (1.75, 0);
+\node (ix)	[treenode] 									at (4,0) 				{$X$ \\ 100};
+\node (ib)	[subtree] 									at (2,-1) 			{\Large $\beta$};
+\node (ia)	[subtree] 									at (6,-1) 			{\Large $\alpha$};
 
-\draw[->, semithick, double] (-0.75, 0) -- node[above, outer sep=3pt] {\large \texttt delete 50} (1.75, 0);
+\path[every node/.style={font=\sffamily\small}]
+(4, 1) 	edge[->] 								node 					{} (ix)
+(ix) 		edge[->] 								node 					{} (ib.north)
+(ix) 		edge[->] 								node 					{} (ia.north);
 
-\node (ia)[treenode] 								at (4,0) 				{$X$ \\ 100};
-\node (ib)[subtree] 								at (2,-1) 			{\Large $\beta$};
-\node (ir)[subtree] 								at (6,-1) 			{\Large $\alpha$};
-
-\draw[->] (4, 1) 	-- (ia);
-\draw[->] (ia) 		-- (ib.north);
-\draw[->] (ia) 		-- (ir.north);
-
+%% legend
+\draw[->] (0, -2.9) -- (1, -2.9) node[right] {\large ~clean edge};
+\draw[->,dotted,thick] (0, -3.4) -- (1, -3.4) node[right] {\large ~delete flag set};
+\node [thin, draw=black, align=center, minimum width=5cm, minimum height=1.25cm] at (2, -3.15) {};

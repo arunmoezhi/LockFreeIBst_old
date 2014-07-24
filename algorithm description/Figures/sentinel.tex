@@ -1,0 +1,22 @@
+\newcommand\XA{0}
+\newcommand\YA{0}
+\newcommand\XB{\XA-1}
+\newcommand\YB{\YA-3.8}
+\node (R)			[treenode] 									at (\XA,\YA)       	{$R$ \\ $\infty$$_0$};
+\node (gnd)		[ground] 										at (\XA-1,\YA-1)			{}; 
+\node (S)			[treenode] 									at (\XA+1,\YA-1.35) 		{$S$ \\ $\infty$$_1$};
+\node (gndls)	[ground] 										at (\XA,\YA-2)				{}; 
+\node (gndrs)	[ground] 										at (\XA+2,\YA-2)				{}; 
+
+
+\path[every node/.style={font=\sffamily\small}]
+(R) 		edge[->] 								node  				{} (S)
+(R) 		edge[->] 								node 				 	{} (gnd)
+(S) edge[->] node {} (gndls)
+(S) edge[->] node {} (gndrs);
+
+%% legend
+\draw[->] (\XB,\YB) -- (\XB+1, \YB) node[right] {\large ~clean edge};
+\draw[->,dotted,thick] (\XB, \YB-0.5) -- (\XB+1, \YB-0.5) node[right] {\large ~marked edge};
+%\draw[->,dashed,thick] (\XB, \YB-1) -- (\XB+1, \YB-1) node[right] {\large ~promote flag set};
+\node [thin, draw=black, align=center, minimum width=5cm, minimum height=1.4cm] at (\XB+2, \YB-0.3) {};

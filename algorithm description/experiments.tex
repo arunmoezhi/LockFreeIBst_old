@@ -3,14 +3,15 @@
 \begin{enumerate}
 \item \textbf{Maximum Tree Size:} This depends on the size of the key space. We consider five different key ranges: 1000(1K), 10,000 (10K), 100,000 (100K), 1 million (1M) and 10 million (10M) keys. To capture only the steady state behaviour we \textit{pre-populated} the tree to 50$\%$ of its maximum size, prior to starting the simulation run.
 \item \textbf{Relative Distribution of Various Operations:} We consider three different workload  distributions: (a) \textit{read-dominated} workload : 90$\%$ search, 9$\%$ insert and 1$\%$ delete, (b) \textit{mixed} workload : 70$\%$ search, 20$\%$ insert and 10$\%$ delete and (c) \textit{write-dominated} workload : 0$\%$ search, 50$\%$ insert and 50$\%$ delete
-\item \textbf{Maximum Degree of Contention:} This depends on number of threads concurrently operating on the tree. We varied the number of threads from 1 to 128 in increments in powers of 2.
+\item \textbf{Maximum Degree of Concurrency:} This depends on number of threads concurrently operating on the tree. We varied the number of threads from 1 to 128 in increments in powers of 2.
 \end{enumerate}
-\begin{table}[h]
+\begin{table}[ht]
+\small
 \caption{hardware features}
 \begin{tabular}{|l|l|}
 \hline
-CPU packages      & 4         \\ \hline
-Cores per package & 8         \\ \hline
+CPU sockets      & 4         \\ \hline
+Cores per socket & 8         \\ \hline
 Threads per core  & 2         \\ \hline
 Clock frequency   & 2.3 GHz   \\ \hline
 L1 cache (I/D)    & 64KB/16KB \\ \hline
@@ -32,6 +33,6 @@ Memory            & 256 GB    \\ \hline
 We compared the performance of different implementations with respect to two metrics:
 \begin{enumerate}
 	\item \textbf{System Throughput:} it is defined as the number of operations executed per unit time.
-	\item \textbf{Avg Seek Length:} it is defined as the average length of the access path of a seek operation.
+	\item \textbf{Avg Seek Length:} it is defined as the average length of the \accesspath of a seek operation.
 \end{enumerate}
 \input{experiments-graphs}

@@ -1,37 +1,51 @@
-\node (a)[treenode, fill=black!20] 	at (-6,0)       {$X$ \\ 50};
-\node (b)[subtree] 									at (-7.5,-1)  	{\Large $\alpha$};
-\node (c)[treenode] 								at (-4,-1.5) 		{$Y0$ \\ 100};
-\node (d)[treenode]									at (-5.5,-3)		{$Y1$ \\ 60}; 
-\node (e)[subtree] 									at (-3,-2.5)    {\Large $\beta$};
-\node (f)[treenode]									at (-7,-4.5)		{$Y2$ \\ 55}; 
-\node (g)[subtree] 									at (-4,-4)   		{\Large $\gamma$};
-\node (h)[ground] 									at (-8.5,-6)		{}; 
-\node (i)[subtree] 									at (-5.5,-5.5)  {\Large $\omega$};
+\node (x)		[treenode, fill=black!20] 	at (-6,0)       {$X$ \\ 50};
+\node (a)		[subtree] 									at (-7.5,-1)  	{\Large $\alpha$};
+\node (y0)	[treenode] 									at (-4,-1.5) 		{$Y0$ \\ 100};
+\node (y1)	[treenode]									at (-5.5,-3)		{$Y1$ \\ 60}; 
+\node (b)		[subtree] 									at (-3,-2.5)    {\Large $\beta$};
+\node (y2)	[treenode]									at (-7,-4.5)		{$Y2$ \\ 55}; 
+\node (g)		[subtree] 									at (-4,-4)   		{\Large $\gamma$};
+\node (gnd)	[ground] 										at (-8.5,-6)		{}; 
+\node (o)		[subtree] 									at (-5.5,-5.5)  {\Large $\omega$};
+\node (x1) 	[] 													at(-7.5,-0.2) 	{\textbf{target node}};
+\node (y1l) [] 													at(-7,-3.2) 		{\textbf{succ parent}};
+\node (y2l) [] 													at(-8.4,-4.7) 	{\textbf{succ node}};
 
-\draw[->] (-6, 1) -- (a);
-\draw[->] (a) 		-- (c);
-\draw[->] (a) 		-- (b.north);
-\draw[->] (c) 		-- (d);
-\draw[->] (c) 		-- (e.north);
-\draw[->] (d) 		-- (f);
-\draw[->] (d) 		-- (g.north);
-\draw[->] (f) 		-- (h);
-\draw[->] (f) 		-- (i.north);
+\path[every node/.style={font=\sffamily\large}]
+%(-8.5, -0.2)edge[->] 								node [above, outer sep=3pt]					{target node} (-6.7,-0.2)
+%(-9.5, -4.7)edge[->] 								node [above, outer sep=3pt]					{succ node} (-7.7,-4.7)
+(-6, 1) edge[->] 								node 					{} (x)
+(x) 		edge[->,dotted,thick] 	node 					{} (y0)
+(x) 		edge[->,dotted,thick]		node 					{} (a.north)
+(y0) 		edge[->] 								node 					{} (y1)
+(y0) 		edge[->] 								node 					{} (b.north)
+(y1) 		edge[->] 								node 					{} (y2)
+(y1) 		edge[->] 								node 					{} (g.north)
+(y2) 		edge[->,dashed,thick]		node 					{} (gnd)
+(y2) 		edge[->,dashed,thick]		node 					{} (o.north);
 
-\draw[->, semithick, double] (-2.25, 0) -- node[above, outer sep=3pt] {\large \texttt delete 50} (0.25, 0);
+\path[every node/.style={font=\sffamily\small}]
+(-2.25, 0) edge[->,semithick, double] node [above, outer sep=3pt] {\large \texttt delete 50} (0.25, 0);
 
-\node (ia)[treenode] 								at (2,0)       	{$X$$\prime$ \\ 55};
-\node (ib)[subtree] 								at (0.5,-1)  		{\Large $\alpha$};
-\node (ic)[treenode] 								at (4,-1.5) 		{$Y0$ \\ 100};
-\node (id)[treenode]								at (2.5,-3)			{$Y1$ \\ 60}; 
-\node (ie)[subtree] 								at (5,-2.5)    	{\Large $\beta$};
-\node (if)[subtree]									at (1,-4)				{\Large $\omega$}; 
-\node (ig)[subtree] 								at (4,-4)   		{\Large $\gamma$};
+\node (ix)	[treenode] 									at (2,0)       	{$X$$\prime$ \\ 55};
+\node (ia)	[subtree] 									at (0.5,-1)  		{\Large $\alpha$};
+\node (iy0)	[treenode] 									at (4,-1.5) 		{$Y0$ \\ 100};
+\node (iy1)	[treenode]									at (2.5,-3)			{$Y1$ \\ 60}; 
+\node (ib)	[subtree] 									at (5,-2.5)    	{\Large $\beta$};
+\node (io)	[subtree]										at (1,-4)				{\Large $\omega$}; 
+\node (ignd)[subtree] 									at (4,-4)   		{\Large $\gamma$};
 
-\draw[->] (2, 1) 	-- (ia);
-\draw[->] (ia) 		-- (ic);
-\draw[->] (ia) 		-- (ib.north);
-\draw[->] (ic) 		-- (id);
-\draw[->] (ic) 		-- (ie.north);
-\draw[->] (id) 		-- (if.north);
-\draw[->] (id) 		-- (ig.north);
+\path[every node/.style={font=\sffamily\small}]
+(2, 1) 	edge[->] 								node 					{} (ix)
+(ix) 		edge[->] 								node 					{} (iy0)
+(ix) 		edge[->] 								node 					{} (ia.north)
+(iy0) 	edge[->] 								node 					{} (iy1)
+(iy0) 	edge[->] 								node 					{} (ib.north)
+(iy1) 	edge[->] 								node 					{} (io.north)
+(iy1) 	edge[->] 								node 					{} (ignd.north);
+
+%% legend
+\draw[->] (0, -5.8) -- (1, -5.8) node[right] {\large ~clean edge};
+\draw[->,dotted,thick] (4, -5.8) -- (5, -5.8) node[right] {\large ~delete flag set};
+\draw[->,dashed,thick] (0, -6.3) -- (1, -6.3) node[right] {\large ~promote flag set};
+\node [thin, draw=black, align=center, minimum width=8.6cm, minimum height=1.25cm] at (3.5, -6.1) {};
